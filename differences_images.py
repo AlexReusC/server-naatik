@@ -57,8 +57,8 @@ def make_butterfly_plot(df, variable, ui):
                     xaxis2={'side': 'top'},)
 
     #fig.show()
-    os.makedirs(f"static/images/{ui}", exist_ok=True)
-    fig.write_image(f"static/images/{ui}/{variable}.png")
+    os.makedirs(f"static/images_differences/{ui}", exist_ok=True)
+    fig.write_image(f"static/images_differences/{ui}/{variable}.png")
 
 
 def create_images(churn, nochurn, ui):
