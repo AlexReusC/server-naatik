@@ -4,3 +4,9 @@ venv/
 # Migrations
 migrations/
 __pycache__/
+
+#Csv's
+breakdownPredictions/
+
+#Static files
+static/
