@@ -4,6 +4,7 @@ from flask import Flask, request, send_from_directory, jsonify, url_for
 from flask_cors import CORS
 from joblib import load
 import pandas as pd
+import numpy as np
 import json
 from differences_images import create_images
 from calculate_differences import get_differences
@@ -47,12 +48,19 @@ def run_models():
 		#Create images churn vs no churn
 		churn = group1
 		nochurn = df[df["Target"] >= threshold1]
-		create_images(churn, nochurn, ui)
 
-		differences = get_differences(churn, nochurn)
-		#differences = "a"
+		differences = None
+		state = "both"
+		if churn == np.nan:
+			state = "nochurn"
+		elif nochurn == np.nan:
+			state = "churn"
+		else:
+			create_images(churn, nochurn, ui)
+			differences = get_differences(churn, nochurn)
 
-		return jsonify({"ui": ui, "acc": {"group1": group1_acc.values[0], "group2": group2_acc.values[0], "group3": group3_acc.values[0], "group4": group4_acc.values[0]}, "differences": differences}), 200
+
+		return jsonify({"ui": ui, "acc": {"group1": group1_acc.values[0], "group2": group2_acc.values[0], "group3": group3_acc.values[0], "group4": group4_acc.values[0]}, "differences": differences, "state": state}), 200
 
 @app.route('/retrievecsv', methods=["GET"])
 def retrieve_csv():
