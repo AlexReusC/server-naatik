@@ -50,6 +50,7 @@ def run_models():
 		create_images(churn, nochurn, ui)
 
 		differences = get_differences(churn, nochurn)
+		#differences = "a"
 
 		return jsonify({"ui": ui, "acc": {"group1": group1_acc.values[0], "group2": group2_acc.values[0], "group3": group3_acc.values[0], "group4": group4_acc.values[0]}, "differences": differences}), 200
 
