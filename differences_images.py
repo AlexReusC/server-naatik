@@ -13,8 +13,11 @@ def get_dataframe_for_plot_nocategoric(variable, churn, nochurn):
     return difference_bill
 
 def get_dataframe_for_plot_categoric(variable, churn, nochurn):
-    party_gender_cd_churn = churn.groupby(variable)[variable].count()
-    party_gender_cd_nochurn = nochurn.groupby(variable)[variable].count()
+    party_gender_cd_churn_count = churn.groupby(variable)[variable].count()
+    party_gender_cd_nochurn_count = nochurn.groupby(variable)[variable].count()
+
+    party_gender_cd_churn = (party_gender_cd_churn_count / party_gender_cd_churn_count.sum()) * 100
+    party_gender_cd_nochurn = (party_gender_cd_nochurn_count / party_gender_cd_nochurn_count.sum()) * 100
 
     difference_gender = pd.DataFrame({"churn": party_gender_cd_churn, "no churn": party_gender_cd_nochurn}).reset_index().fillna(0)
     return difference_gender

@@ -6,6 +6,7 @@ from joblib import load
 import pandas as pd
 import json
 from differences_images import create_images
+from calculate_differences import get_differences
 
 def get_probability_churn(probabilities):
 	return list(map(lambda x: x[1], probabilities))
@@ -48,7 +49,9 @@ def run_models():
 		nochurn = df[df["Target"] >= threshold1]
 		create_images(churn, nochurn, ui)
 
-		return jsonify({"ui": ui, "acc": {"group1": group1_acc.values[0], "group2": group2_acc.values[0], "group3": group3_acc.values[0], "group4": group4_acc.values[0]}}), 200
+		differences = get_differences(churn, nochurn)
+
+		return jsonify({"ui": ui, "acc": {"group1": group1_acc.values[0], "group2": group2_acc.values[0], "group3": group3_acc.values[0], "group4": group4_acc.values[0]}, "differences": differences}), 200
 
 @app.route('/retrievecsv', methods=["GET"])
 def retrieve_csv():
