@@ -47,10 +47,10 @@ def run_models():
 		group4 = df[df["Target"] >= threshold3]
 		group1_acc, group2_acc, group3_acc, group4_acc = group1.agg({"BILL_AMOUNT": "sum"}), group2.agg({"BILL_AMOUNT": "sum"}), group3.agg({"BILL_AMOUNT": "sum"}), group4.agg({"BILL_AMOUNT": "sum"})
 
-		little_groups_counts = {"no churn": group1.count(), "low churn": group2.count(), "medium chun": group3.count(), "high churn": group4.count()}
+		little_groups_counts = pd.DataFrame(data={"count": [len(group1), len(group2),len(group3.index), len(group4.index)]}, index=["sin churn", "churn bajo", "churn medio", "churn alto"])
 
-		histogram_little_groups = px.histogram(little_groups_counts, x="Grupos")
-		pie_little_groups = px.pie(little_groups_counts, title="Grupos")
+		histogram_little_groups = px.bar(x=little_groups_counts.index, y=little_groups_counts["count"])
+		pie_little_groups = px.pie(little_groups_counts, values=little_groups_counts["count"], names=little_groups_counts.index, title="Grupos")
 
 		os.makedirs(f"static/graphs/{ui}", exist_ok=True)
 		histogram_little_groups.write_image(f"static/graphs/{ui}/histogram.png")
@@ -62,9 +62,9 @@ def run_models():
 
 		differences = None
 		state = "both"
-		if churn == np.nan:
+		if len(churn.index) == 0:
 			state = "nochurn"
-		elif nochurn == np.nan:
+		elif len(nochurn.index) == 0:
 			state = "churn"
 		else:
 			create_images(churn, nochurn, ui)
