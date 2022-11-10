@@ -28,6 +28,8 @@ def run_models():
 		slides = json.loads(request.form["slides"])
 		threshold1, threshold2, threshold3 = slides["first-slide"], slides["second-slide"], slides["third-slide"]
 		threshold1, threshold2, threshold3 = float(threshold1), float(threshold2), float(threshold3)
+		threshold1, threshold2, threshold3 = threshold1 / 100, threshold2 / 100, threshold3 / 100
+
 
 		#prediction
 		prediction = prediction_model.predict_proba(df)
