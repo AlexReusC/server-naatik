@@ -66,14 +66,14 @@ def make_butterfly_plot(df, variable, ui):
 
 def create_images(churn, nochurn, ui):
 	# df_complaints = get_dataframe_for_plot_nocategoric('COMPLAINTS', churn, nochurn)
-	df_bill_amount = get_dataframe_for_plot_nocategoric('BILL_AMOUNT', churn, nochurn)
-	df_years_stayed = get_dataframe_for_plot_nocategoric('Years_stayed', churn, nochurn)
+    df_bill_amount = get_dataframe_for_plot_nocategoric('BILL_AMOUNT', churn, nochurn)
+    df_years_stayed = get_dataframe_for_plot_nocategoric('Years_stayed', churn, nochurn)
 
-	df_party_gender_cd = get_dataframe_for_plot_categoric('PARTY_GENDER_CD', churn, nochurn)
+    df_party_nationality = get_dataframe_for_plot_categoric('PARTY_NATIONALITY', churn, nochurn)
+    df_status = get_dataframe_for_plot_categoric('STATUS', churn, nochurn)
 	# df_pty_profile_sub_type = get_dataframe_for_plot_categoric('PTY_PROFILE_SUB_TYPE', churn, nochurn)
 
-	make_butterfly_plot(df_party_gender_cd, 'PARTY_GENDER_CD', ui)
-	# make_butterfly_plot(df_complaints, 'COMPLAINTS', ui)
-	make_butterfly_plot(df_bill_amount, 'BILL_AMOUNT', ui)
-	# make_butterfly_plot(df_pty_profile_sub_type, 'PTY_PROFILE_SUB_TYPE', ui)
-	make_butterfly_plot(df_years_stayed, 'Years_stayed', ui)
+    make_butterfly_plot(df_bill_amount, 'BILL_AMOUNT', ui)
+    make_butterfly_plot(df_years_stayed, 'Years_stayed', ui)
+    make_butterfly_plot(df_party_nationality, 'PARTY_NATIONALITY', ui)
+    make_butterfly_plot(df_status, 'STATUS', ui)

@@ -30,6 +30,7 @@ def get_differences(churn, nochurn):
 	bill_amount_text = noncategorical_difference(churn, nochurn, "BILL_AMOUNT")
 	years_stayed_text = noncategorical_difference(churn, nochurn, "Years_stayed")
 
-	party_gender_text = categorical_difference(churn, nochurn, "PARTY_GENDER_CD")
+	party_nationality_text = categorical_difference(churn, nochurn, "PARTY_NATIONALITY")
+	status_text = categorical_difference(churn, nochurn, "STATUS")
 
-	return {"BILL_AMOUNT": bill_amount_text, "Years_stayed": years_stayed_text, "PARTY_GENDER_CD": party_gender_text}
+	return {"BILL_AMOUNT": bill_amount_text, "Years_stayed": years_stayed_text, "PARTY_NATIONALITY": party_nationality_text, "STATUS": status_text}

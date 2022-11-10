@@ -10,21 +10,42 @@ from differences_images import create_images
 from calculate_differences import get_differences
 import plotly.express as px
 
+# import ETL modules
+
+
+from data_transformation.functions.transform_prediction import transform_df_predict
+
+
 def get_probability_churn(probabilities):
 	return list(map(lambda x: x[1], probabilities))
 
+def make_etl_transformation(df):
+	transform_df_predict(df)
+
+
 app = Flask(__name__)
 CORS(app)
-prediction_model = load("classification-model.joblib")
+prediction_model = load("./data_transformation/joblibs/telecom_churn_me/model/classification-model.joblib")
 os.makedirs("static", exist_ok=True)
 os.makedirs("static/images_differences", exist_ok=True)
 os.makedirs("static/graphs", exist_ok=True)
 
 @app.route('/', methods=["POST"])
 def run_models():
+
+
 	if request.method == "POST" and request.files:
 		#get parameters
 		df = pd.read_csv(request.files["data"])
+
+		# make etl that create a file called transformed_new.csv
+		make_etl_transformation(df)
+
+		print("etl completed.")
+
+		# read that transformed csv
+		df = pd.read_csv('transformed_new.csv')
+
 		slides = json.loads(request.form["slides"])
 		threshold1, threshold2, threshold3 = slides["first-slide"], slides["second-slide"], slides["third-slide"]
 		threshold1, threshold2, threshold3 = float(threshold1), float(threshold2), float(threshold3)
