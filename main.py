@@ -8,6 +8,7 @@ import numpy as np
 import json
 from differences_images import create_images
 from calculate_differences import get_differences
+import plotly.express as px
 
 def get_probability_churn(probabilities):
 	return list(map(lambda x: x[1], probabilities))
@@ -17,6 +18,7 @@ CORS(app)
 prediction_model = load("classification-model.joblib")
 os.makedirs("static", exist_ok=True)
 os.makedirs("static/images_differences", exist_ok=True)
+os.makedirs("static/graphs", exist_ok=True)
 
 @app.route('/', methods=["POST"])
 def run_models():
@@ -44,6 +46,15 @@ def run_models():
 		group3 = df[(df["Target"] >= threshold2) & (df["Target"] < threshold3)]
 		group4 = df[df["Target"] >= threshold3]
 		group1_acc, group2_acc, group3_acc, group4_acc = group1.agg({"BILL_AMOUNT": "sum"}), group2.agg({"BILL_AMOUNT": "sum"}), group3.agg({"BILL_AMOUNT": "sum"}), group4.agg({"BILL_AMOUNT": "sum"})
+
+		little_groups_counts = {"no churn": group1.count(), "low churn": group2.count(), "medium chun": group3.count(), "high churn": group4.count()}
+
+		histogram_little_groups = px.histogram(little_groups_counts, x="Grupos")
+		pie_little_groups = px.pie(little_groups_counts, title="Grupos")
+
+		os.makedirs(f"static/graphs/{ui}", exist_ok=True)
+		histogram_little_groups.write_image(f"static/graphs/{ui}/histogram.png")
+		pie_little_groups.write_image(f"static/graphs/{ui}/pie.png")
 
 		#Create images churn vs no churn
 		churn = group1
@@ -80,5 +91,18 @@ def getdifferences():
 		# loop over the image paths
 		for image_file in image_files:
 			url = url_for('static', filename=f'images_differences/{ui}/{image_file}')
+			arr.append(url)
+		return arr, 200
+
+@app.route('/getgraphs', methods=["GET"])
+def getgraphs():
+	if request.method == "GET" and request.args.get("ui"):
+
+		ui = request.args.get("ui")
+		image_files = os.listdir(f'static/graphs/{ui}')
+		arr = []
+		# loop over the image paths
+		for image_file in image_files:
+			url = url_for('static', filename=f'graphs/{ui}/{image_file}')
 			arr.append(url)
 		return arr, 200
