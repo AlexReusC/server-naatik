@@ -22,6 +22,9 @@ def get_probability_churn(probabilities):
 def make_etl_transformation(df):
 	transform_df_predict(df)
 
+def get_original_file_rows(df):
+	column_names = list(df.columns.values)
+	return column_names
 
 app = Flask(__name__)
 CORS(app)
@@ -37,7 +40,7 @@ def run_models():
 	if request.method == "POST" and request.files:
 		#get parameters
 		df = pd.read_csv(request.files["data"])
-		print(df)
+		#print(df)
 
 		# make etl that create a file called transformed_new.csv
 		make_etl_transformation(df)
@@ -96,8 +99,9 @@ def run_models():
 			create_images(churn, nochurn, ui)
 			differences = get_differences(churn, nochurn)
 
+		fileRows = get_original_file_rows(df)
 
-		return jsonify({"ui": ui, "acc": {"group1": group1_acc.values[0], "group2": group2_acc.values[0], "group3": group3_acc.values[0], "group4": group4_acc.values[0]}, "differences": differences, "state": state}), 200
+		return jsonify({"ui": ui,"fileRows": fileRows, "acc": {"group1": round(group1_acc.values[0],2), "group2": round(group2_acc.values[0],2), "group3": round(group3_acc.values[0],2), "group4": round(group4_acc.values[0],2)}, "differences": differences, "state": state}), 200
 
 @app.route('/retrievecsv', methods=["GET"])
 def retrieve_csv():
