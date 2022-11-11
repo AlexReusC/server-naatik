@@ -37,6 +37,7 @@ def run_models():
 	if request.method == "POST" and request.files:
 		#get parameters
 		df = pd.read_csv(request.files["data"])
+		print(df)
 
 		# make etl that create a file called transformed_new.csv
 		make_etl_transformation(df)
@@ -44,7 +45,8 @@ def run_models():
 		print("etl completed.")
 
 		# read that transformed csv
-		df = pd.read_csv('transformed_new.csv')
+		df_encoded = pd.read_csv('transformed_new.csv')
+		print(df_encoded)
 
 		slides = json.loads(request.form["slides"])
 		threshold1, threshold2, threshold3 = slides["first-slide"], slides["second-slide"], slides["third-slide"]
@@ -53,21 +55,22 @@ def run_models():
 
 
 		#prediction
-		prediction = prediction_model.predict_proba(df)
+		prediction = prediction_model.predict_proba(df_encoded)
 		prediction = get_probability_churn(prediction)
 
 		#create file
-		prediction_dataframe = pd.DataFrame({"Target": prediction})
-		df = pd.concat([df, prediction_dataframe], axis=1)
+		prediction_dataframe = pd.DataFrame({"Probabilidad de churn": prediction})
+
+		df = df.join(prediction_dataframe)
 		ui = str(uuid.uuid4())
 		os.makedirs("breakdownPredictions", exist_ok=True)
 		df.to_csv(f"breakdownPredictions/{ui}.csv")
 
 		#aggregate little groups
-		group1 = df[df["Target"] < threshold1]
-		group2 = df[(df["Target"] >= threshold1) & (df["Target"] < threshold2)]
-		group3 = df[(df["Target"] >= threshold2) & (df["Target"] < threshold3)]
-		group4 = df[df["Target"] >= threshold3]
+		group1 = df[df["Probabilidad de churn"] < threshold1]
+		group2 = df[(df["Probabilidad de churn"] >= threshold1) & (df["Probabilidad de churn"] < threshold2)]
+		group3 = df[(df["Probabilidad de churn"] >= threshold2) & (df["Probabilidad de churn"] < threshold3)]
+		group4 = df[df["Probabilidad de churn"] >= threshold3]
 		group1_acc, group2_acc, group3_acc, group4_acc = group1.agg({"BILL_AMOUNT": "sum"}), group2.agg({"BILL_AMOUNT": "sum"}), group3.agg({"BILL_AMOUNT": "sum"}), group4.agg({"BILL_AMOUNT": "sum"})
 
 		little_groups_counts = pd.DataFrame(data={"count": [len(group1), len(group2),len(group3.index), len(group4.index)]}, index=["sin churn", "churn bajo", "churn medio", "churn alto"])
@@ -81,7 +84,7 @@ def run_models():
 
 		#Create images churn vs no churn
 		churn = group1
-		nochurn = df[df["Target"] >= threshold1]
+		nochurn = df[df["Probabilidad de churn"] >= threshold1]
 
 		differences = None
 		state = "both"
