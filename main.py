@@ -26,6 +26,20 @@ def get_original_file_rows(df):
 	column_names = list(df.columns.values)
 	return column_names
 
+def add_probability_labels(df, thr1, thr2, thr3):
+	conditions = [
+		(df["Probabilidad de churn"] < thr1), 
+		((df["Probabilidad de churn"] >= thr1) & (df["Probabilidad de churn"] < thr2)),
+		((df["Probabilidad de churn"] >= thr2) & (df["Probabilidad de churn"] < thr3)),
+		(df["Probabilidad de churn"] >= thr3)
+		]
+	
+	values = ["sin churn", "churn bajo", "churn medio", "churn alto"]
+
+	df["Etiquetas de churn"] = np.select(conditions, values)
+
+	return df
+
 app = Flask(__name__)
 CORS(app)
 prediction_model = load("./data_transformation/joblibs/telecom_churn_me/model/classification-model.joblib")
@@ -63,6 +77,7 @@ def run_models():
 
 		#create file
 		prediction_dataframe = pd.DataFrame({"Probabilidad de churn": prediction})
+		prediction_dataframe = add_probability_labels(prediction_dataframe, threshold1, threshold2, threshold3)
 
 		df = df.join(prediction_dataframe)
 		ui = str(uuid.uuid4())

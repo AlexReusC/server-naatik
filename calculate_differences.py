@@ -14,7 +14,8 @@ def categorical_difference(churn, nochurn, variable):
 		if abs(percentage_difference) > abs(max_val):
 			max_row, max_val = row, percentage_difference
 
-	text = f"El grupo con churn tiene {abs(percentage_difference)} {'mas' if max_val > 0 else 'menos'} de {max_row[variable]} en {variable} que el grupo sin churn"
+	percentage_difference = round(percentage_difference, 2)
+	text = f"El grupo con churn tiene {abs(percentage_difference)}% {'mas' if max_val > 0 else 'menos'} de {max_row[variable]} en {variable} que el grupo sin churn"
 	return text
 
 
@@ -22,8 +23,8 @@ def noncategorical_difference(churn, nochurn, variable):
 	difference = churn[variable].mean() - nochurn[variable].mean()
 	avg = (churn[variable].mean() + nochurn[variable].mean()) / 2
 
-	percentage_difference = (difference / avg) * 100
-	text = f"El grupo con churn tiene {abs(percentage_difference)} {'mas' if percentage_difference > 0 else 'menos'} de {variable} que el grupo sin churn"
+	percentage_difference = round((difference / avg) * 100, 2)
+	text = f"El grupo con churn tiene {abs(percentage_difference)}% {'mas' if percentage_difference > 0 else 'menos'} de {variable} que el grupo sin churn"
 	return text
 
 def get_differences(churn, nochurn):
