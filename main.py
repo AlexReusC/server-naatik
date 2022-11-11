@@ -20,7 +20,8 @@ def get_probability_churn(probabilities):
 	return list(map(lambda x: x[1], probabilities))
 
 def make_etl_transformation(df):
-	transform_df_predict(df)
+	s_copy = df.copy()
+	transform_df_predict(s_copy)
 
 def get_original_file_rows(df):
 	column_names = list(df.columns.values)
@@ -54,22 +55,24 @@ def run_models():
 	if request.method == "POST" and request.files:
 		#get parameters
 		df = pd.read_csv(request.files["data"])
-		#print(df)
+
+
+		print("# 1: ",df["PARTY_NATIONALITY"])
 
 		# make etl that create a file called transformed_new.csv
 		make_etl_transformation(df)
 
-		print("etl completed.")
+		print("# 2: ",df["PARTY_NATIONALITY"])
 
 		# read that transformed csv
 		df_encoded = pd.read_csv('transformed_new.csv')
-		print(df_encoded)
 
 		slides = json.loads(request.form["slides"])
 		threshold1, threshold2, threshold3 = slides["first-slide"], slides["second-slide"], slides["third-slide"]
 		threshold1, threshold2, threshold3 = float(threshold1), float(threshold2), float(threshold3)
 		threshold1, threshold2, threshold3 = threshold1 / 100, threshold2 / 100, threshold3 / 100
 
+		print("# 3: ",df["PARTY_NATIONALITY"])
 
 		#prediction
 		prediction = prediction_model.predict_proba(df_encoded)
@@ -77,9 +80,12 @@ def run_models():
 
 		#create file
 		prediction_dataframe = pd.DataFrame({"Probabilidad de churn": prediction})
+		print(prediction_dataframe)
 		prediction_dataframe = add_probability_labels(prediction_dataframe, threshold1, threshold2, threshold3)
 
 		df = df.join(prediction_dataframe)
+		print(df["PARTY_NATIONALITY"])
+
 		ui = str(uuid.uuid4())
 		os.makedirs("breakdownPredictions", exist_ok=True)
 		df.to_csv(f"breakdownPredictions/{ui}.csv")
