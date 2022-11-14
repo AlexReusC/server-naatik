@@ -56,13 +56,9 @@ def run_models():
 		#get parameters
 		df = pd.read_csv(request.files["data"])
 
-
-		print("# 1: ",df["PARTY_NATIONALITY"])
-
 		# make etl that create a file called transformed_new.csv
 		make_etl_transformation(df)
 
-		print("# 2: ",df["PARTY_NATIONALITY"])
 
 		# read that transformed csv
 		df_encoded = pd.read_csv('transformed_new.csv')
@@ -72,7 +68,6 @@ def run_models():
 		threshold1, threshold2, threshold3 = float(threshold1), float(threshold2), float(threshold3)
 		threshold1, threshold2, threshold3 = threshold1 / 100, threshold2 / 100, threshold3 / 100
 
-		print("# 3: ",df["PARTY_NATIONALITY"])
 
 		#prediction
 		prediction = prediction_model.predict_proba(df_encoded)
@@ -80,11 +75,8 @@ def run_models():
 
 		#create file
 		prediction_dataframe = pd.DataFrame({"Probabilidad de churn": prediction})
-		print(prediction_dataframe)
 		prediction_dataframe = add_probability_labels(prediction_dataframe, threshold1, threshold2, threshold3)
-
 		df = df.join(prediction_dataframe)
-		print(df["PARTY_NATIONALITY"])
 
 		ui = str(uuid.uuid4())
 		os.makedirs("breakdownPredictions", exist_ok=True)
@@ -95,7 +87,15 @@ def run_models():
 		group2 = df[(df["Probabilidad de churn"] >= threshold1) & (df["Probabilidad de churn"] < threshold2)]
 		group3 = df[(df["Probabilidad de churn"] >= threshold2) & (df["Probabilidad de churn"] < threshold3)]
 		group4 = df[df["Probabilidad de churn"] >= threshold3]
-		group1_acc, group2_acc, group3_acc, group4_acc = group1.agg({"BILL_AMOUNT": "sum"}), group2.agg({"BILL_AMOUNT": "sum"}), group3.agg({"BILL_AMOUNT": "sum"}), group4.agg({"BILL_AMOUNT": "sum"})
+
+		## Adding bill amount based on probability
+		group1['BILL_AMOUNT/PROBABILITIES'] = group1['Probabilidad de churn'] *  group1['BILL_AMOUNT']
+		group2['BILL_AMOUNT/PROBABILITIES'] = group2['Probabilidad de churn'] *  group2['BILL_AMOUNT']
+		group3['BILL_AMOUNT/PROBABILITIES'] = group3['Probabilidad de churn'] *  group3['BILL_AMOUNT']
+		group4['BILL_AMOUNT/PROBABILITIES'] = group4['Probabilidad de churn'] *  group4['BILL_AMOUNT']
+
+
+		group1_acc, group2_acc, group3_acc, group4_acc = group1.agg({"BILL_AMOUNT/PROBABILITIES": "sum"}), group2.agg({"BILL_AMOUNT/PROBABILITIES": "sum"}), group3.agg({"BILL_AMOUNT/PROBABILITIES": "sum"}), group4.agg({"BILL_AMOUNT/PROBABILITIES": "sum"})
 
 		little_groups_counts = pd.DataFrame(data={"count": [len(group1), len(group2),len(group3.index), len(group4.index)]}, index=["sin churn", "churn bajo", "churn medio", "churn alto"])
 
