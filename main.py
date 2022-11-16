@@ -23,23 +23,77 @@ def make_etl_transformation(df):
 	s_copy = df.copy()
 	transform_df_predict(s_copy)
 
+def get_thresholds(slides):
+		threshold1, threshold2, threshold3 = slides["first-slide"], slides["second-slide"], slides["third-slide"]
+		threshold1, threshold2, threshold3 = float(threshold1), float(threshold2), float(threshold3)
+		threshold1, threshold2, threshold3 = threshold1 / 100, threshold2 / 100, threshold3 / 100
+
+def split_by_little_groups(df, threshold1, threshold2, threshold3):
+		group1 = df[df["Probabilidad de churn"] < threshold1]
+		group2 = df[(df["Probabilidad de churn"] >= threshold1) & (df["Probabilidad de churn"] < threshold2)]
+		group3 = df[(df["Probabilidad de churn"] >= threshold2) & (df["Probabilidad de churn"] < threshold3)]
+		group4 = df[df["Probabilidad de churn"] >= threshold3]
+		return group1, group2, group3, group4
+
+def add_bill_amount(group1, group2, group3, group4):
+		group1['BILL_AMOUNT/PROBABILITIES'] = group1['Probabilidad de churn'] *  group1['BILL_AMOUNT']
+		group2['BILL_AMOUNT/PROBABILITIES'] = group2['Probabilidad de churn'] *  group2['BILL_AMOUNT']
+		group3['BILL_AMOUNT/PROBABILITIES'] = group3['Probabilidad de churn'] *  group3['BILL_AMOUNT']
+		group4['BILL_AMOUNT/PROBABILITIES'] = group4['Probabilidad de churn'] *  group4['BILL_AMOUNT']
+		return group1, group2, group3, group4
+
+def get_little_groups_accs(group1, group2, group3, group4):
+		group1_acc, group2_acc, group3_acc, group4_acc = group1.agg({"BILL_AMOUNT/PROBABILITIES": "sum"}), group2.agg({"BILL_AMOUNT/PROBABILITIES": "sum"}), group3.agg({"BILL_AMOUNT/PROBABILITIES": "sum"}), group4.agg({"BILL_AMOUNT/PROBABILITIES": "sum"})
+		return group1_acc, group2_acc, group3_acc, group4_acc
+
+def save_graphs_images(group1, group2, group3, group4, ui):
+		little_groups_counts = pd.DataFrame(data={"count": [len(group1), len(group2),len(group3.index), len(group4.index)]}, index=["sin churn", "churn bajo", "churn medio", "churn alto"])
+
+		histogram_little_groups = px.bar(x=little_groups_counts.index, y=little_groups_counts["count"])
+		pie_little_groups = px.pie(little_groups_counts, values=little_groups_counts["count"], names=little_groups_counts.index, title="Grupos")
+
+		os.makedirs(f"static/graphs/{ui}", exist_ok=True)
+		histogram_little_groups.write_image(f"static/graphs/{ui}/histogram.png")
+		pie_little_groups.write_image(f"static/graphs/{ui}/pie.png")
+
+def differences_churn_nochurn(df, threshold1, ui):
+		churn = df[df["Probabilidad de churn"] < threshold1]
+		nochurn = df[df["Probabilidad de churn"] >= threshold1]
+
+		differences = None
+		state = "both"
+		if len(churn.index) == 0:
+			state = "nochurn"
+		elif len(nochurn.index) == 0:
+			state = "churn"
+		else:
+			create_images(churn, nochurn, ui)
+			differences = get_differences(churn, nochurn)
+
+		return state, differences
+
 def get_original_file_rows(df):
 	column_names = list(df.columns.values)
 	return column_names
 
-def add_probability_labels(df, thr1, thr2, thr3):
+def add_probability_labels(prediction, thr1, thr2, thr3):
+	prediction_dataframe = pd.DataFrame({"Probabilidad de churn": prediction})
 	conditions = [
-		(df["Probabilidad de churn"] < thr1), 
-		((df["Probabilidad de churn"] >= thr1) & (df["Probabilidad de churn"] < thr2)),
-		((df["Probabilidad de churn"] >= thr2) & (df["Probabilidad de churn"] < thr3)),
-		(df["Probabilidad de churn"] >= thr3)
+		(prediction_dataframe["Probabilidad de churn"] < thr1), 
+		((prediction_dataframe["Probabilidad de churn"] >= thr1) & (prediction_dataframe["Probabilidad de churn"] < thr2)),
+		((prediction_dataframe["Probabilidad de churn"] >= thr2) & (prediction_dataframe["Probabilidad de churn"] < thr3)),
+		(prediction_dataframe["Probabilidad de churn"] >= thr3)
 		]
 	
 	values = ["sin churn", "churn bajo", "churn medio", "churn alto"]
 
-	df["Etiquetas de churn"] = np.select(conditions, values)
+	prediction_dataframe["Etiquetas de churn"] = np.select(conditions, values)
 
-	return df
+	return prediction_dataframe 
+
+def mock_big_groups(df):
+	np.random.seed(42)
+	df["big_group"] = np.random.choince(1, 4, df.shape[0])
 
 app = Flask(__name__)
 CORS(app)
@@ -59,66 +113,39 @@ def run_models():
 		# make etl that create a file called transformed_new.csv
 		make_etl_transformation(df)
 
-
 		# read that transformed csv
 		df_encoded = pd.read_csv('transformed_new.csv')
 
 		slides = json.loads(request.form["slides"])
-		threshold1, threshold2, threshold3 = slides["first-slide"], slides["second-slide"], slides["third-slide"]
-		threshold1, threshold2, threshold3 = float(threshold1), float(threshold2), float(threshold3)
-		threshold1, threshold2, threshold3 = threshold1 / 100, threshold2 / 100, threshold3 / 100
-
+		threshold1, threshold2, threshold3 = get_thresholds(slides)
 
 		#prediction
 		prediction = prediction_model.predict_proba(df_encoded)
 		prediction = get_probability_churn(prediction)
 
 		#create file
-		prediction_dataframe = pd.DataFrame({"Probabilidad de churn": prediction})
-		prediction_dataframe = add_probability_labels(prediction_dataframe, threshold1, threshold2, threshold3)
+		prediction_dataframe = add_probability_labels(prediction, threshold1, threshold2, threshold3)
 		df = df.join(prediction_dataframe)
+
+		# df = mock_big_groups(df)
+
+		# print("big groups: ", df)
 
 		ui = str(uuid.uuid4())
 		os.makedirs("breakdownPredictions", exist_ok=True)
 		df.to_csv(f"breakdownPredictions/{ui}.csv")
 
-		#aggregate little groups
-		group1 = df[df["Probabilidad de churn"] < threshold1]
-		group2 = df[(df["Probabilidad de churn"] >= threshold1) & (df["Probabilidad de churn"] < threshold2)]
-		group3 = df[(df["Probabilidad de churn"] >= threshold2) & (df["Probabilidad de churn"] < threshold3)]
-		group4 = df[df["Probabilidad de churn"] >= threshold3]
+		group1, group2, group3, group4 = split_by_little_groups(df, threshold1, threshold2, threshold3)
 
 		## Adding bill amount based on probability
-		group1['BILL_AMOUNT/PROBABILITIES'] = group1['Probabilidad de churn'] *  group1['BILL_AMOUNT']
-		group2['BILL_AMOUNT/PROBABILITIES'] = group2['Probabilidad de churn'] *  group2['BILL_AMOUNT']
-		group3['BILL_AMOUNT/PROBABILITIES'] = group3['Probabilidad de churn'] *  group3['BILL_AMOUNT']
-		group4['BILL_AMOUNT/PROBABILITIES'] = group4['Probabilidad de churn'] *  group4['BILL_AMOUNT']
+		group1, group2, group3, group4 = add_bill_amount(group1, group2, group3, group4)
 
+		group1_acc, group2_acc, group3_acc, group4_acc = get_little_groups_accs(group1, group2, group3, group4)
 
-		group1_acc, group2_acc, group3_acc, group4_acc = group1.agg({"BILL_AMOUNT/PROBABILITIES": "sum"}), group2.agg({"BILL_AMOUNT/PROBABILITIES": "sum"}), group3.agg({"BILL_AMOUNT/PROBABILITIES": "sum"}), group4.agg({"BILL_AMOUNT/PROBABILITIES": "sum"})
-
-		little_groups_counts = pd.DataFrame(data={"count": [len(group1), len(group2),len(group3.index), len(group4.index)]}, index=["sin churn", "churn bajo", "churn medio", "churn alto"])
-
-		histogram_little_groups = px.bar(x=little_groups_counts.index, y=little_groups_counts["count"])
-		pie_little_groups = px.pie(little_groups_counts, values=little_groups_counts["count"], names=little_groups_counts.index, title="Grupos")
-
-		os.makedirs(f"static/graphs/{ui}", exist_ok=True)
-		histogram_little_groups.write_image(f"static/graphs/{ui}/histogram.png")
-		pie_little_groups.write_image(f"static/graphs/{ui}/pie.png")
+		save_graphs_images(group1, group2, group3, group4, ui)
 
 		#Create images churn vs no churn
-		churn = group1
-		nochurn = df[df["Probabilidad de churn"] >= threshold1]
-
-		differences = None
-		state = "both"
-		if len(churn.index) == 0:
-			state = "nochurn"
-		elif len(nochurn.index) == 0:
-			state = "churn"
-		else:
-			create_images(churn, nochurn, ui)
-			differences = get_differences(churn, nochurn)
+		state, differences = differences_churn_nochurn(df, threshold1, ui)
 
 		fileRows = get_original_file_rows(df)
 
