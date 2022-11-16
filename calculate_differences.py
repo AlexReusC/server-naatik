@@ -6,14 +6,30 @@ def categorical_difference(churn, nochurn, variable):
 	print("categorical difference: ", churn[variable])
 
 	differences = pd.DataFrame({"churn": churn_count_by_class, "no churn": nochurn_count_by_class}).reset_index().fillna(0)
-	max_row, max_val = "", 0
+	max_row, max_val = None, 0
 	for index, row in differences.iterrows():
 		difference = row["churn"] - row["no churn"]
 		avg = (row["churn"] + row["no churn"]) / 2
 		percentage_difference = (difference / avg) * 100
 
+		print("Differences: ", row["churn"], row["no churn"], percentage_difference)
 		if abs(percentage_difference) > abs(max_val):
 			max_row, max_val = row, percentage_difference
+
+		"""
+		if row["churn"] == 0 or row["no churn"] == 0:
+			continue
+		difference = row["churn"] / row["no churn"]
+
+		if differece > max_val:
+			max_row, max_val = row, percentage_difference
+
+		if max_row == None:
+			return f"Sin diferencias en {variable}"
+		else:
+			difference = round(difference, 2)
+			return f"El grupo con churn tiene {difference} veces de diferencia con respecto al grupo de no churn"
+		"""
 
 	percentage_difference = round(percentage_difference, 2)
 	text = f"El grupo con churn tiene {abs(percentage_difference)}% {'mas' if max_val > 0 else 'menos'} de {max_row[variable]} en {variable} que el grupo sin churn"
