@@ -54,7 +54,7 @@ def save_graphs_images(group1, group2, group3, group4, ui, i):
 		pie_little_groups = px.pie(little_groups_counts, values=little_groups_counts["count"], names=little_groups_counts.index, title="Grupos")
 
 		os.makedirs(f"static/graphs/{ui}", exist_ok=True)
-		histogram_little_groups.write_image(f"static/graphs/{ui}/{i}/histogram.png")
+		os.makedirs(f"static/graphs/{ui}/{i}", exist_ok=True)
 		pie_little_groups.write_image(f"static/graphs/{ui}/{i}/pie.png")
 
 def differences_churn_nochurn(df, threshold1, ui):
@@ -153,12 +153,33 @@ def run_models():
 			little_group1, little_group2, little_group3, little_group4 = split_by_little_groups(group, threshold1, threshold2, threshold3)
 			little_group1, little_group2, little_group3, little_group4 = add_bill_amount(little_group1, little_group2, little_group3, little_group4)
 			little_group1_acc, little_group2_acc, little_group3_acc, little_group4_acc = get_little_groups_accs(little_group1, little_group2, little_group3, little_group4)
-			save_graphs_images(little_group1, little_group2, little_group3, little_group4, i)
+			save_graphs_images(little_group1, little_group2, little_group3, little_group4,ui, i+1)
 			state, differences = differences_churn_nochurn(group, threshold1, ui)
-			info.append({"i": i, "acc": {"group1": round(little_group1_acc.values[0],2), "group2": round(little_group2_acc.values[0],2), "group3": round(little_group3_acc.values[0],2), "group4": round(little_group4_acc.values[0],2)}, "differences": differences, "state": state})
+			info.append(
+				{
+					"i": i+1,
+					"acc": 
+					{ 
+						"group1": round(little_group1_acc.values[0],2),
+						"group2": round(little_group2_acc.values[0],2),
+						"group3": round(little_group3_acc.values[0],2),
+						"group4": round(little_group4_acc.values[0],2)
+					},
+					"differences": differences,
+					"state": state,
+					"total":
+					{
+						"group1": len(little_group1),
+						"group2": len(little_group2),
+						"group3": len(little_group3),
+						"group4": len(little_group4),
+					},
+					"all_groups": len(group)
+
+				} )
 
 
-		group1, group2, group3, group4 = split_by_little_groups(df, threshold1, threshold2, threshold3)
+		"""group1, group2, group3, group4 = split_by_little_groups(df, threshold1, threshold2, threshold3)
 
 		## Adding bill amount based on probability
 		group1, group2, group3, group4 = add_bill_amount(group1, group2, group3, group4)
@@ -168,11 +189,13 @@ def run_models():
 		save_graphs_images(group1, group2, group3, group4, ui)
 
 		#Create images churn vs no churn
-		state, differences = differences_churn_nochurn(df, threshold1, ui)
+		state, differences = differences_churn_nochurn(df, threshold1, ui)"""
 
 		fileRows = get_original_file_rows(df)
 
-		return jsonify({"ui": ui,"fileRows": fileRows, "acc": {"group1": round(group1_acc.values[0],2), "group2": round(group2_acc.values[0],2), "group3": round(group3_acc.values[0],2), "group4": round(group4_acc.values[0],2)}, "differences": differences, "state": state}), 200
+		return jsonify({"ui": ui, "fileRows": fileRows, "info": info}), 200
+
+		#return jsonify({"ui": ui,"fileRows": fileRows, "acc": {"group1": round(group1_acc.values[0],2), "group2": round(group2_acc.values[0],2), "group3": round(group3_acc.values[0],2), "group4": round(group4_acc.values[0],2)}, "differences": differences, "state": state}), 200
 
 @app.route('/retrievecsv', methods=["GET"])
 def retrieve_csv():
