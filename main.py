@@ -127,6 +127,8 @@ def run_models():
 		# read that transformed csv
 		df_encoded = pd.read_csv('transformed_new.csv')
 
+		target = json.loads(request.form["target"])
+		print(target)
 		slides = json.loads(request.form["slides"])
 		threshold1, threshold2, threshold3 = get_thresholds(slides)
 
