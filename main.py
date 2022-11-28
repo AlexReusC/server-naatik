@@ -213,7 +213,7 @@ def getdifferences():
 
 		ui = request.args.get("ui")
 		i = request.args.get("i")
-		image_files = os.listdir(f'static/images_differences/{ui}')
+		image_files = os.listdir(f'static/images_differences/{ui}/{i}')
 		arr = []
 		# loop over the image paths
 		for image_file in image_files:
@@ -227,7 +227,7 @@ def getgraphs():
 
 		ui = request.args.get("ui")
 		i = request.args.get("i")
-		image_files = os.listdir(f'static/graphs/{ui}')
+		image_files = os.listdir(f'static/graphs/{ui}/{i}')
 		arr = []
 		# loop over the image paths
 		for image_file in image_files:
