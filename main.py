@@ -56,6 +56,7 @@ def save_graphs_images(group1, group2, group3, group4, ui, i):
 		os.makedirs(f"static/graphs/{ui}", exist_ok=True)
 		os.makedirs(f"static/graphs/{ui}/{i}", exist_ok=True)
 		pie_little_groups.write_image(f"static/graphs/{ui}/{i}/pie.png")
+		histogram_little_groups.write_image(f"static/graphs/{ui}/{i}/histogram.png")
 
 def differences_churn_nochurn(df, threshold1, ui, i):
 		churn = df[df["Probabilidad de churn"] < threshold1]
