@@ -57,7 +57,7 @@ def save_graphs_images(group1, group2, group3, group4, ui, i):
 		os.makedirs(f"static/graphs/{ui}/{i}", exist_ok=True)
 		pie_little_groups.write_image(f"static/graphs/{ui}/{i}/pie.png")
 
-def differences_churn_nochurn(df, threshold1, ui):
+def differences_churn_nochurn(df, threshold1, ui, i):
 		churn = df[df["Probabilidad de churn"] < threshold1]
 		nochurn = df[df["Probabilidad de churn"] >= threshold1]
 
@@ -68,7 +68,7 @@ def differences_churn_nochurn(df, threshold1, ui):
 		elif len(nochurn.index) == 0:
 			state = "churn"
 		else:
-			create_images(churn, nochurn, ui)
+			create_images(churn, nochurn, ui, i)
 			differences = get_differences(churn, nochurn)
 
 		return state, differences
@@ -156,7 +156,7 @@ def run_models():
 			little_group1, little_group2, little_group3, little_group4 = add_bill_amount(little_group1, little_group2, little_group3, little_group4)
 			little_group1_acc, little_group2_acc, little_group3_acc, little_group4_acc = get_little_groups_accs(little_group1, little_group2, little_group3, little_group4)
 			save_graphs_images(little_group1, little_group2, little_group3, little_group4,ui, i+1)
-			state, differences = differences_churn_nochurn(group, threshold1, ui)
+			state, differences = differences_churn_nochurn(group, threshold1, ui, i+1)
 			info.append(
 				{
 					"i": i+1,

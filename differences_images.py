@@ -22,7 +22,7 @@ def get_dataframe_for_plot_categoric(variable, churn, nochurn):
     difference_gender = pd.DataFrame({"churn": party_gender_cd_churn, "no churn": party_gender_cd_nochurn}).reset_index().fillna(0)
     return difference_gender
 
-def make_butterfly_plot(df, variable, ui):
+def make_butterfly_plot(df, variable, ui, i):
 
     # create subplots
     fig = make_subplots(rows=1, cols=2, specs=[[{}, {}]], shared_xaxes=False,
@@ -61,10 +61,11 @@ def make_butterfly_plot(df, variable, ui):
 
     #fig.show()
     os.makedirs(f"static/images_differences/{ui}", exist_ok=True)
-    fig.write_image(f"static/images_differences/{ui}/{variable}.png")
+    os.makedirs(f"static/images_differences/{ui}/{i}", exist_ok=True)
+    fig.write_image(f"static/images_differences/{ui}/{i}/{variable}.png")
 
 
-def create_images(churn, nochurn, ui):
+def create_images(churn, nochurn, ui, i):
 	# df_complaints = get_dataframe_for_plot_nocategoric('COMPLAINTS', churn, nochurn)
     df_bill_amount = get_dataframe_for_plot_nocategoric('BILL_AMOUNT', churn, nochurn)
     df_years_stayed = get_dataframe_for_plot_nocategoric('Years_stayed', churn, nochurn)
@@ -73,7 +74,7 @@ def create_images(churn, nochurn, ui):
     df_status = get_dataframe_for_plot_categoric('STATUS', churn, nochurn)
 	# df_pty_profile_sub_type = get_dataframe_for_plot_categoric('PTY_PROFILE_SUB_TYPE', churn, nochurn)
 
-    make_butterfly_plot(df_bill_amount, 'BILL_AMOUNT', ui)
-    make_butterfly_plot(df_years_stayed, 'Years_stayed', ui)
-    make_butterfly_plot(df_party_nationality, 'PARTY_NATIONALITY', ui)
-    make_butterfly_plot(df_status, 'STATUS', ui)
+    make_butterfly_plot(df_bill_amount, 'BILL_AMOUNT', ui, i)
+    make_butterfly_plot(df_years_stayed, 'Years_stayed', ui, i)
+    make_butterfly_plot(df_party_nationality, 'PARTY_NATIONALITY', ui, i)
+    make_butterfly_plot(df_status, 'STATUS', ui, i)
