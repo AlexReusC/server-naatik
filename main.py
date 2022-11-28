@@ -209,26 +209,28 @@ def retrieve_csv():
 
 @app.route('/getdifferences', methods=["GET"])
 def getdifferences():
-	if request.method == "GET" and request.args.get("ui"):
+	if request.method == "GET" and request.args.get("ui") and request.args.get("i"):
 
 		ui = request.args.get("ui")
+		i = request.args.get("i")
 		image_files = os.listdir(f'static/images_differences/{ui}')
 		arr = []
 		# loop over the image paths
 		for image_file in image_files:
-			url = url_for('static', filename=f'images_differences/{ui}/{image_file}')
+			url = url_for('static', filename=f'images_differences/{ui}/{i}/{image_file}')
 			arr.append(url)
 		return arr, 200
 
 @app.route('/getgraphs', methods=["GET"])
 def getgraphs():
-	if request.method == "GET" and request.args.get("ui"):
+	if request.method == "GET" and request.args.get("ui") and request.args.get("i"):
 
 		ui = request.args.get("ui")
+		i = request.args.get("i")
 		image_files = os.listdir(f'static/graphs/{ui}')
 		arr = []
 		# loop over the image paths
 		for image_file in image_files:
-			url = url_for('static', filename=f'graphs/{ui}/{image_file}')
+			url = url_for('static', filename=f'graphs/{ui}/{i}/{image_file}')
 			arr.append(url)
 		return arr, 200
