@@ -129,8 +129,8 @@ def run_models():
 		df_encoded = pd.read_csv('transformed_new.csv')
 
 		target = json.loads(request.form["target"])
-		print("target: ", target)
 		slides = json.loads(request.form["slides"])
+		# file_name = json.loads(request.form["file_name"])
 		threshold1, threshold2, threshold3 = get_thresholds(slides)
 
 		#prediction
@@ -180,19 +180,6 @@ def run_models():
 					"all_groups": len(group)
 
 				} )
-
-
-		"""group1, group2, group3, group4 = split_by_little_groups(df, threshold1, threshold2, threshold3)
-
-		## Adding bill amount based on probability
-		group1, group2, group3, group4 = add_bill_amount(group1, group2, group3, group4)
-
-		group1_acc, group2_acc, group3_acc, group4_acc = get_little_groups_accs(group1, group2, group3, group4)
-
-		save_graphs_images(group1, group2, group3, group4, ui)
-
-		#Create images churn vs no churn
-		state, differences = differences_churn_nochurn(df, threshold1, ui)"""
 
 		fileRows = get_original_file_rows(df)
 
