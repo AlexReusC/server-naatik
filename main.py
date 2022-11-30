@@ -15,13 +15,19 @@ import plotly.express as px
 
 from data_transformation.functions.transform_prediction import transform_df_predict
 
+from model_mlp_train import train_mlp
+
+from data_transformation.functions.transform_model import transform_df_model
+from data_transformation.functions.storage_configuration import configure_storage
 
 def get_probability_churn(probabilities):
 	return list(map(lambda x: x[1], probabilities))
 
-def make_etl_transformation(df):
-	s_copy = df.copy()
-	transform_df_predict(s_copy)
+def make_etl_transformation(original_name_dataset):
+	transform_df_predict(original_name_dataset)
+
+def train_model(target,filename, smote):
+	train_mlp(target,filename, smote)
 
 def get_thresholds(slides):
 		threshold1, threshold2, threshold3 = slides["first-slide"], slides["second-slide"], slides["third-slide"]
@@ -107,9 +113,11 @@ def mock_big_groups(df):
 	df["big_group"] = np.random.randint(1, 4, size=len(df))
 	return df
 
+def transformModel(original_name_dataset, target_column_name):
+	transform_df_model(original_name_dataset, target_column_name)
+
 app = Flask(__name__)
 CORS(app)
-prediction_model = load("./data_transformation/joblibs/telecom_churn_me/model/classification-model.joblib")
 os.makedirs("static", exist_ok=True)
 os.makedirs("static/images_differences", exist_ok=True)
 os.makedirs("static/graphs", exist_ok=True)
@@ -120,18 +128,48 @@ def run_models():
 
 	if request.method == "POST" and request.files:
 		#get parameters
+		os.makedirs(f'./data_transformation/joblibs',exist_ok=True)
+		print("name: ",request.files["data"].filename.split('.')[0])
+		filename = request.files["data"].filename.split('.')[0]
 		df = pd.read_csv(request.files["data"])
-
-		# make etl that create a file called transformed_new.csv
-		make_etl_transformation(df)
-
-		# read that transformed csv
-		df_encoded = pd.read_csv('transformed_new.csv')
+		df.to_csv(f'./raw_data/{filename}.csv')
+		# make 1st step to training 
 
 		target = json.loads(request.form["target"])
 		slides = json.loads(request.form["slides"])
+		
+		configure_storage(f'./raw_data/{filename}.csv', filename)
+		transformModel(filename,target)
+
+		print("paso transform model")
+		# make etl that create a file called transformed_new.csv
+		#df = df.drop(['Unnamed: 0'])
+
+
+
 		# file_name = json.loads(request.form["file_name"])
 		threshold1, threshold2, threshold3 = get_thresholds(slides)
+
+		#train model
+		# agregar validacion de si existe la columna.
+		train_model(target,filename, False)
+		print("ya se entreno.")
+
+		# cargamos modelo
+		prediction_model = load("./data_transformation/joblibs/"+filename+"/model/mlp/mlp_model.joblib")
+
+		# etl
+		
+		new_df = pd.read_csv('./data/'+filename+'/'+filename+'.csv')
+		print(new_df.columns)
+		new_df = new_df.drop([target], axis=1 )
+		new_df.to_csv(f'./data/{filename}/{filename}_new.csv', index=False)
+		make_etl_transformation(filename)
+
+		# read that transformed csv
+		df_encoded = pd.read_csv('./data/'+filename+'/'+filename+'_new_transformed.csv')
+
+		print("paso etl")
 
 		#prediction
 		prediction = prediction_model.predict_proba(df_encoded)

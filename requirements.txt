@@ -6,3 +6,5 @@ Flask-Cors==3.0.10
 plotly
 kaleido
 category-encoders
+matplotlib
+imblearn
