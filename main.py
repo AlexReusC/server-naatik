@@ -65,8 +65,8 @@ def save_graphs_images(group1, group2, group3, group4, ui, i):
 		histogram_little_groups.write_image(f"static/graphs/{ui}/{i}/histogram.png")
 
 def differences_churn_nochurn(df, threshold1, ui, i):
-		churn = df[df["Probabilidad de churn"] < threshold1]
-		nochurn = df[df["Probabilidad de churn"] >= threshold1]
+		churn = df[df["Probabilidad de churn"] < threshold1].drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn"], axis = 1, errors="ignore")
+		nochurn = df[df["Probabilidad de churn"] >= threshold1].drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn"], axis = 1, errors="ignore")
 
 		differences = None
 		state = "both"
@@ -81,6 +81,7 @@ def differences_churn_nochurn(df, threshold1, ui, i):
 		return state, differences
 
 def get_original_file_rows(df):
+	df = df.drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn"], axis = 1, errors="ignore")
 	column_names = list(df.columns.values)
 	return column_names
 
@@ -121,6 +122,7 @@ CORS(app)
 os.makedirs("static", exist_ok=True)
 os.makedirs("static/images_differences", exist_ok=True)
 os.makedirs("static/graphs", exist_ok=True)
+os.makedirs("raw_data/", exist_ok=True)
 
 @app.route('/', methods=["POST"])
 def run_models():
@@ -223,8 +225,6 @@ def run_models():
 
 		return jsonify({"ui": ui, "fileRows": fileRows, "info": info}), 200
 
-		#return jsonify({"ui": ui,"fileRows": fileRows, "acc": {"group1": round(group1_acc.values[0],2), "group2": round(group2_acc.values[0],2), "group3": round(group3_acc.values[0],2), "group4": round(group4_acc.values[0],2)}, "differences": differences, "state": state}), 200
-
 @app.route('/retrievecsv', methods=["GET"])
 def retrieve_csv():
 	if request.method == "GET" and request.args.get("ui"):
@@ -240,12 +240,13 @@ def getdifferences():
 		ui = request.args.get("ui")
 		i = request.args.get("i")
 		image_files = os.listdir(f'static/images_differences/{ui}/{i}')
-		arr = []
+		data = dict()
 		# loop over the image paths
 		for image_file in image_files:
 			url = url_for('static', filename=f'images_differences/{ui}/{i}/{image_file}')
-			arr.append(url)
-		return arr, 200
+			filename = os.path.splitext(os.path.basename(url))[0]
+			data[filename] = url
+		return data, 200
 
 @app.route('/getgraphs', methods=["GET"])
 def getgraphs():
