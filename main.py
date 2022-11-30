@@ -240,12 +240,13 @@ def getdifferences():
 		ui = request.args.get("ui")
 		i = request.args.get("i")
 		image_files = os.listdir(f'static/images_differences/{ui}/{i}')
-		arr = []
+		data = dict()
 		# loop over the image paths
 		for image_file in image_files:
 			url = url_for('static', filename=f'images_differences/{ui}/{i}/{image_file}')
-			arr.append(url)
-		return arr, 200
+			filename = os.path.splitext(os.path.basename(url))[0]
+			data[filename] = url
+		return data, 200
 
 @app.route('/getgraphs', methods=["GET"])
 def getgraphs():
