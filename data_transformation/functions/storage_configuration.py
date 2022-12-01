@@ -31,3 +31,5 @@ def configure_storage(dataset_path, original_name_dataset):
     os.makedirs(f'./data_transformation/joblibs/{original_name_dataset}/model/benchmark',exist_ok=True)
     os.makedirs(f'./data_transformation/joblibs/{original_name_dataset}/model/random_forest',exist_ok=True)
     os.makedirs(f'./data_transformation/joblibs/{original_name_dataset}/model/cnn',exist_ok=True)
+
+

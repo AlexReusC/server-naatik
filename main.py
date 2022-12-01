@@ -134,11 +134,16 @@ def run_models():
 
 
 	if request.method == "POST" and request.files:
+		ui = str(uuid.uuid4())
 		#get parameters
 		os.makedirs(f'./data_transformation/joblibs',exist_ok=True)
 		filename = request.files["data"].filename.split('.')[0]
 		df = pd.read_csv(request.files["data"])
 		df.to_csv(f'./raw_data/{filename}.csv')
+
+		# creating the folders for the clustering
+		os.makedirs(f'./static/results_clustering/{ui}',exist_ok=True)
+
 		# make 1st step to training 
 
 		target = json.loads(request.form["target"])
@@ -200,7 +205,7 @@ def run_models():
 
 		df = mock_big_groups(df)
 
-		ui = str(uuid.uuid4())
+
 		os.makedirs("breakdownPredictions", exist_ok=True)
 		df.to_csv(f"breakdownPredictions/{ui}.csv")
 
@@ -208,7 +213,7 @@ def run_models():
 		df_to_clustering = df_encoded
 		df_to_clustering[target] = np.array(prediction_binary)
 		df_to_clustering.to_csv("./aaaaaaaaaaaaa.csv")
-		clustering(target, filename, df_to_clustering)
+		clustering(target, filename, df_to_clustering, ui)
 
 		big_groups = split_by_big_groups(df)
 
@@ -275,6 +280,20 @@ def getgraphs():
 		for image_file in image_files:
 			url = url_for('static', filename=f'graphs/{ui}/{i}/{image_file}')
 			arr.append(url)
+		return arr, 200
+
+@app.route('/getclusters', methods=["GET"])
+def getclusters():
+	if request.method == "GET" and request.args.get("ui"):
+
+		ui = request.args.get("ui")
+		cluster_files = os.listdir(f'static/results_clustering/{ui}')
+		arr = []
+		# loop over the image paths
+		for file in cluster_files:
+			if (file.split('.')[1] == 'png'):
+				url = url_for('static', filename=f'results_clustering/{ui}/{file}')
+				arr.append(url)
 		return arr, 200
 
 

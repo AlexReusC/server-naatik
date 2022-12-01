@@ -57,7 +57,7 @@ def elbow(dataset):
         clusters_number = kneedle.knee
     return clusters_number
 
-def clustering(target, file_name, transformed_csv):
+def clustering(target, file_name, transformed_csv, ui):
 
 
     print("transformed: ", transformed_csv.columns)
@@ -80,16 +80,16 @@ def clustering(target, file_name, transformed_csv):
     polar=df.groupby("label").mean().reset_index()
     polar=pd.melt(polar,id_vars=["label"])
     fig0 = px.line_polar(polar, r="value", theta="variable", color="label", line_close=True,height=800,width=1400)
-    fig0.show()
-    fig0.write_image(f'./results_clustering/main_cluster_img.png')
+    #fig0.show()
+    fig0.write_image(f'./static/results_clustering/{ui}/main_cluster_img.png')
     #Main clustering pie plot to see clustering distribution
     pie0=df.groupby('label').size().reset_index()
     pie0.columns=['label','value']
     pie0 = px.pie(pie0,values='value',names='label')
-    pie0.show()
-    pie0.write_image(f'./results_clustering/main_cluster_distribution.png')
+    #pie0.show()
+    pie0.write_image(f'./static/results_clustering/{ui}/main_cluster_distribution.png')
 
-    df.to_csv(f'./results_clustering/main_cluster.csv') #creating filtered cvs 
+    df.to_csv(f'./static/results_clustering/{ui}/main_cluster.csv') #creating filtered cvs 
 
     #Create a csv focusing in cluster churns
     clust = 0 #iterator
@@ -98,12 +98,12 @@ def clustering(target, file_name, transformed_csv):
         dataframe = pd.DataFrame(df.loc[df['label'] == clust]) #Filter by cluster
         dataframe = dataframe.loc[dataframe[target] == target_value] #Filter by positive targets
         dataframe = dataframe.drop(columns=[target,'label'])
-        dataframe.to_csv(f'./results_clustering/cluster{clust}.csv') #creating filtered cvs 
+        dataframe.to_csv(f'./static/results_clustering/{ui}/cluster{clust}.csv') #creating filtered cvs 
         clust = clust + 1 #iterator
 
     clust = 0 #iterator
     while clust < clusters_number:
-        sub_cluster = pd.read_csv(f'./results_clustering/cluster{clust}.csv') #read every subcluster .csv
+        sub_cluster = pd.read_csv(f'./static/results_clustering/{ui}/cluster{clust}.csv') #read every subcluster .csv
         sub_cluster = sub_cluster.drop(columns=['Unnamed: 0']) #drop the added column
         if sub_cluster.shape[0] == 0:
             clust = clust + 1
@@ -114,13 +114,13 @@ def clustering(target, file_name, transformed_csv):
             sub_polar=clusters.groupby("label").mean().reset_index() 
             sub_polar=pd.melt(sub_polar,id_vars=["label"])
             fig = px.line_polar(sub_polar, r="value", theta="variable", color="label", line_close=True,height=800,width=1400)
-            fig.show() #print here
-            fig.write_image(f'./results_clustering/cluster{clust}img.png') #save as .png file
+            #fig.show() #print here
+            fig.write_image(f'./static/results_clustering/{ui}/cluster{clust}img.png') #save as .png file
             #Pie plot to see sub-cluster's distribution
             pie=clusters.groupby('label').size().reset_index()
             pie.columns=['label','value']
             pie = px.pie(pie,values='value',names='label')
-            pie.show() #print here
-            pie.write_image(f'./results_clustering/cluster{clust}distribution.png') #save as .png file
+            #pie.show() #print here
+            pie.write_image(f'./static/results_clustering/{ui}/cluster{clust}distribution.png') #save as .png file
             clust = clust + 1
     
