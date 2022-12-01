@@ -1,4 +1,10 @@
-Create virtual environment:
+Servidor realizado en Flask que procesa peticiones del frontend para crear modelos, realizar predicciones y hacer un análisis de los datos
+
+# Run app
+
+Se necesita tener Python3 en la computadora para realizar
+
+1. Create virtual environment:
 
 Windows
 ```
@@ -15,7 +21,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Run flask app:
+2. Run flask app:
 
 ```
 export FLASK_APP=main
