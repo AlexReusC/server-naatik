@@ -2,7 +2,7 @@ Servidor realizado en Flask que procesa peticiones del frontend para crear model
 
 # Run app
 
-Se necesita tener Python3 en la computadora para realizar
+Se necesita tener Python3 en la computadora para realizar las siguientes acciones
 
 1. Create virtual environment:
 
