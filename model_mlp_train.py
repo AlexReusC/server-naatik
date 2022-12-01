@@ -53,7 +53,7 @@ def train_mlp(target_column_name, original_name_dataset, smote, model_filename_r
 
 
     #Evaluataion of the predictions against the actual observations in y_val
-    cm = confusion_matrix(y_pred, y_test)
+    cm = confusion_matrix(y_test, y_pred)
 
     #Storing the accuracy
     acc = round(accuracy(cm),2)
@@ -62,6 +62,16 @@ def train_mlp(target_column_name, original_name_dataset, smote, model_filename_r
 
     # Confussion Matrix
     confussion_matrix = pd.DataFrame(cm)
+    dump(confussion_matrix, f"./data_transformation/joblibs/{original_name_dataset}/model/mlp/confusion_matrix.joblib")
+
+
+    predicted_true_positive_percentage = cm[1,1] / (cm[1,1] + cm[0,1])
+    predicted_true_negative_percentage = cm[0,0] / (cm[0,0] + cm[1,0])
+
+    # Saving the general aspects in a df
+    d = {'predicted_true_positive_percentage': [predicted_true_positive_percentage], 'predicted_true_negative_percentage': [predicted_true_negative_percentage]}
+    true_predicted_percentage = pd.DataFrame(data=d)
+    dump(true_predicted_percentage, f"./data_transformation/joblibs/{original_name_dataset}/model/mlp/true_predicted_percentage.joblib")
 
     # K-Fold Cross-Validation
     def cross_validation(model, _X, _y, _cv=3):
