@@ -20,14 +20,19 @@ from model_mlp_train import train_mlp
 from data_transformation.functions.transform_model import transform_df_model
 from data_transformation.functions.storage_configuration import configure_storage
 
+
+# import clustering module
+from kmeans import mainClustering, elbow, clustering
+
+
 def get_probability_churn(probabilities):
 	return list(map(lambda x: x[1], probabilities))
 
-def make_etl_transformation(original_name_dataset):
-	transform_df_predict(original_name_dataset)
+def make_etl_transformation(original_name_dataset, file_to_predict):
+	transform_df_predict(original_name_dataset,file_to_predict)
 
-def train_model(target,filename, smote):
-	train_mlp(target,filename, smote)
+def train_model(target,filename, smote, model_filename_requested_by_user):
+	train_mlp(target,filename, smote, model_filename_requested_by_user)
 
 def get_thresholds(slides):
 		threshold1, threshold2, threshold3 = slides["first-slide"], slides["second-slide"], slides["third-slide"]
@@ -131,7 +136,6 @@ def run_models():
 	if request.method == "POST" and request.files:
 		#get parameters
 		os.makedirs(f'./data_transformation/joblibs',exist_ok=True)
-		print("name: ",request.files["data"].filename.split('.')[0])
 		filename = request.files["data"].filename.split('.')[0]
 		df = pd.read_csv(request.files["data"])
 		df.to_csv(f'./raw_data/{filename}.csv')
@@ -139,43 +143,56 @@ def run_models():
 
 		target = json.loads(request.form["target"])
 		slides = json.loads(request.form["slides"])
-		
-		configure_storage(f'./raw_data/{filename}.csv', filename)
-		transformModel(filename,target)
-
-		print("paso transform model")
-		# make etl that create a file called transformed_new.csv
-		#df = df.drop(['Unnamed: 0'])
-
-
+		action = json.loads(request.form["action"])
+		custom_model_to_predict = ''
+		model_filename_requested_by_user = ''
 
 		# file_name = json.loads(request.form["file_name"])
 		threshold1, threshold2, threshold3 = get_thresholds(slides)
 
-		#train model
-		# agregar validacion de si existe la columna.
-		train_model(target,filename, False)
-		print("ya se entreno.")
+		if action == 'train':
+			# todo lo de train
 
-		# cargamos modelo
-		prediction_model = load("./data_transformation/joblibs/"+filename+"/model/mlp/mlp_model.joblib")
+			configure_storage(f'./raw_data/{filename}.csv', filename)
+			transformModel(filename,target)
 
-		# etl
-		
-		new_df = pd.read_csv('./data/'+filename+'/'+filename+'.csv')
-		print(new_df.columns)
-		new_df = new_df.drop([target], axis=1 )
-		new_df.to_csv(f'./data/{filename}/{filename}_new.csv', index=False)
-		make_etl_transformation(filename)
+			model_filename_requested_by_user = json.loads(request.form["model_name"])
+
+			#train model
+			# agregar validacion de si existe la columna.
+			train_model(target,filename, False, model_filename_requested_by_user)
+
+			prediction_model = load("./trained_models/mlp_model_"+filename+"_"+model_filename_requested_by_user+".joblib")
+			df = pd.read_csv('./data/'+filename+'/'+filename+'.csv')
+			new_df = df.drop([target], axis=1 )
+
+			# etl
+			new_df.to_csv(f'./data/{filename}/{filename}_new.csv', index=False)
+			make_etl_transformation(filename, filename)
+
+
+		elif action == 'predict':
+			# todo lo de predict
+			configure_storage(f'./raw_data/{filename}.csv', filename)
+			custom_model_to_predict = json.loads(request.form["custom_model"])
+			prediction_model = load("./trained_models/"+custom_model_to_predict)
+
+			# etl
+			new_df = pd.read_csv('./data/'+filename+'/'+filename+'.csv')
+			new_df.to_csv(f'./data/{filename}/{filename}_new.csv', index=False)
+			get_original_train_file_name = custom_model_to_predict.split('.')[0]
+			get_original_train_file_name = get_original_train_file_name.split('_')[2]
+			make_etl_transformation(get_original_train_file_name, filename)
 
 		# read that transformed csv
 		df_encoded = pd.read_csv('./data/'+filename+'/'+filename+'_new_transformed.csv')
 
-		print("paso etl")
-
-		#prediction
+		#prediction proba
 		prediction = prediction_model.predict_proba(df_encoded)
 		prediction = get_probability_churn(prediction)
+
+		#prediction with 1 and 0
+		prediction_binary = prediction_model.predict(df_encoded)
 
 		#create file
 		prediction_dataframe = add_probability_labels(prediction, threshold1, threshold2, threshold3)
@@ -187,27 +204,25 @@ def run_models():
 		os.makedirs("breakdownPredictions", exist_ok=True)
 		df.to_csv(f"breakdownPredictions/{ui}.csv")
 
+		#clustering
+		df_to_clustering = df_encoded
+		df_to_clustering[target] = np.array(prediction_binary)
+		df_to_clustering.to_csv("./aaaaaaaaaaaaa.csv")
+		clustering(target, filename, df_to_clustering)
+
 		big_groups = split_by_big_groups(df)
 
 
 		info = []
 		for i, group in enumerate(big_groups):
-			print("big_group", group)
 			little_group1, little_group2, little_group3, little_group4 = split_by_little_groups(group, threshold1, threshold2, threshold3)
-			little_group1, little_group2, little_group3, little_group4 = add_bill_amount(little_group1, little_group2, little_group3, little_group4)
-			little_group1_acc, little_group2_acc, little_group3_acc, little_group4_acc = get_little_groups_accs(little_group1, little_group2, little_group3, little_group4)
+			#little_group1, little_group2, little_group3, little_group4 = add_bill_amount(little_group1, little_group2, little_group3, little_group4)
+			#little_group1_acc, little_group2_acc, little_group3_acc, little_group4_acc = get_little_groups_accs(little_group1, little_group2, little_group3, little_group4)
 			save_graphs_images(little_group1, little_group2, little_group3, little_group4,ui, i+1)
 			state, differences = differences_churn_nochurn(group, threshold1, ui, i+1)
 			info.append(
 				{
 					"i": i+1,
-					"acc": 
-					{ 
-						"group1": round(little_group1_acc.values[0],2),
-						"group2": round(little_group2_acc.values[0],2),
-						"group3": round(little_group3_acc.values[0],2),
-						"group4": round(little_group4_acc.values[0],2)
-					},
 					"differences": differences,
 					"state": state,
 					"total":
@@ -261,3 +276,10 @@ def getgraphs():
 			url = url_for('static', filename=f'graphs/{ui}/{i}/{image_file}')
 			arr.append(url)
 		return arr, 200
+
+
+@app.route('/getmodels', methods=["GET"])
+def getmodels():
+	if request.method == "GET":
+		trained_models = os.listdir(f'./trained_models/')
+		return  trained_models,200

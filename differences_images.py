@@ -62,7 +62,8 @@ def make_butterfly_plot(df, variable, ui, i):
     #fig.show()
     os.makedirs(f"static/images_differences/{ui}", exist_ok=True)
     os.makedirs(f"static/images_differences/{ui}/{i}", exist_ok=True)
-    fig.write_image(f"static/images_differences/{ui}/{i}/{variable}.png")
+    variable_without_spaces = variable.replace(" ", "")
+    fig.write_image(f"static/images_differences/{ui}/{i}/{variable_without_spaces}.png")
 
 
 def create_images(churn, nochurn, ui, i):

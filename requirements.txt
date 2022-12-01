@@ -8,3 +8,4 @@ kaleido
 category-encoders
 matplotlib
 imblearn
+kneed

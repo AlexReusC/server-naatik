@@ -12,7 +12,7 @@ import warnings
 
 
 # Function that trains the model mlp
-def train_mlp(target_column_name, original_name_dataset, smote):
+def train_mlp(target_column_name, original_name_dataset, smote, model_filename_requested_by_user):
 
     warnings.filterwarnings("ignore")
 
@@ -144,11 +144,17 @@ def train_mlp(target_column_name, original_name_dataset, smote):
     print(f'Accuracy Test: {acc_test}')
 
 
-    # Storing the model
+    """# Storing the model
     if smote:
         dump(classifier, f"./data_transformation/joblibs/{original_name_dataset}/model/mlp/mlp_model_smote.joblib")
     else:    
-        dump(classifier, f"./data_transformation/joblibs/{original_name_dataset}/model/mlp/mlp_model.joblib")
+        dump(classifier, f"./data_transformation/joblibs/{original_name_dataset}/model/mlp/mlp_model.joblib")"""
+
+    if smote:
+        dump(classifier, f"./trained_models/mlp_model_smote_{original_name_dataset}_{model_filename_requested_by_user}.joblib")
+    else:    
+        dump(classifier, f"./trained_models/mlp_model_{original_name_dataset}_{model_filename_requested_by_user}.joblib")
+        
 
     # Returning the results of the training model
     return confussion_matrix, mlp_results
