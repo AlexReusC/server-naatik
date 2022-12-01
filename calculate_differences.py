@@ -3,7 +3,6 @@ import pandas as pd
 def categorical_difference(churn, nochurn, variable):
 	churn_count_by_class = churn.groupby(variable)[variable].count()
 	nochurn_count_by_class = nochurn.groupby(variable)[variable].count()
-	print("categorical difference: ", churn[variable])
 
 	differences = pd.DataFrame({"churn": churn_count_by_class, "no churn": nochurn_count_by_class}).reset_index().fillna(0)
 	max_row, max_val = None, 0

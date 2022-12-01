@@ -123,7 +123,6 @@ def train_mlp(target_column_name, original_name_dataset, smote, model_filename_r
     mlp_results = cross_validation(classifier, x_train, y_train)
 
     # Plot Accuracy Result
-    print('Printing the K-fold Cross Validation')
     model_name = "MLP"
     plot_result(model_name,
                 "Accuracy",
@@ -138,20 +137,16 @@ def train_mlp(target_column_name, original_name_dataset, smote, model_filename_r
     y_train_true = y_train
     # MSE
     mse_train = mean_squared_error(y_train_true, y_train_predict)
-    print(f'MSE Train: {mse_train}')
     # Accuracy
     acc_train = accuracy_score(y_train_true, y_train_predict, normalize=True)
-    print(f'Accuracy Train: {acc_train}')
 
     # Test
     y_test_predict = classifier.predict(x_test)
     y_test_true = y_test
     # MSE
     mse_test = mean_squared_error(y_test_true, y_test_predict)
-    print(f'MSE Test: {mse_test}')
     # Accuracy
     acc_test = accuracy_score(y_test_true, y_test_predict, normalize=True)
-    print(f'Accuracy Test: {acc_test}')
 
 
     """# Storing the model

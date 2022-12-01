@@ -17,11 +17,18 @@ def transform_df_model(original_name_dataset, target_column_name):
 
     df = pd.read_csv(f'./data/'+original_name_dataset+'/'+original_name_dataset+'.csv')
 
+    # Defining the target column
+    y = target_column_name
+
+    target_column_original = df[y]
+
      # Calculating the total cells per client (rows per client times the columns)
     cells_per_client = len(df.columns)
 
     # Calculating the total non null cells per client
     non_null_cells_per_client = df.count(axis=1)
+
+
 
     # Calculating the total non null cells per client in terms of percentages
     percentages_non_null_cells_per_clients = (non_null_cells_per_client * 100) / (cells_per_client)

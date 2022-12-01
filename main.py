@@ -211,12 +211,22 @@ def run_models():
 
 		#clustering
 		df_to_clustering = df_encoded
+		print("COLUMNS ANTES DE MANDAR A KMEANS: ", df_to_clustering.columns)
 		df_to_clustering[target] = np.array(prediction_binary)
 		df_to_clustering.to_csv("./aaaaaaaaaaaaa.csv")
+
 		clustering(target, filename, df_to_clustering, ui)
 
 		big_groups = split_by_big_groups(df)
 
+		# get clustering
+		cluster_files = os.listdir(f'static/results_clustering/{ui}')
+		arr_clustering = {}
+		# loop over the image paths
+		for file in cluster_files:
+			if (file.split('.')[1] == 'png'):
+				url = url_for('static', filename=f'results_clustering/{ui}/{file}')
+				arr_clustering[file.split('.')[0]] = url
 
 		info = []
 		for i, group in enumerate(big_groups):
@@ -237,13 +247,18 @@ def run_models():
 						"group3": len(little_group3),
 						"group4": len(little_group4),
 					},
-					"all_groups": len(group)
-
+					"all_groups": len(group),
+					"clusting": {
+						"distribution": url_for('static', filename=f'results_clustering/{ui}/cluster{i}distribution.png'),
+						"polar_plot": url_for('static', filename=f'results_clustering/{ui}/cluster{i}img.png')
+					}
 				} )
 
 		fileRows = get_original_file_rows(df)
 
-		return jsonify({"ui": ui, "fileRows": fileRows, "info": info}), 200
+
+
+		return jsonify({"ui": ui, "fileRows": fileRows, "info": info, "clustering": arr_clustering}), 200
 
 @app.route('/retrievecsv', methods=["GET"])
 def retrieve_csv():

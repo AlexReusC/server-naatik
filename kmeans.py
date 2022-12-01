@@ -18,6 +18,8 @@ import matplotlib.pyplot as plt
 #Clustering function
 def mainClustering(dataframe, clusters_number):
     dataframe.reset_index
+    print("DF2_ ", dataframe.shape)
+    print("N CLUST_ ", clusters_number)
     #k-means algorithm
     kmeans = KMeans(
             n_clusters=clusters_number, #number of clusters for general dataset
@@ -30,7 +32,7 @@ def mainClustering(dataframe, clusters_number):
     kmeans.fit(dataframe)
     #labeling
     clusters=pd.DataFrame(dataframe)
-    clusters['label']=kmeans.labels_
+    clusters['big_group']=kmeans.labels_
     return clusters
 
 #Getting number of k-means clusters
@@ -40,8 +42,8 @@ def elbow(dataset):
     X=scaler.transform(dataset)
     inertia = []
     max_clusters = dataset.shape[1] #number of variables
-    cluster_number = list(range(1, max_clusters))
-    for i in cluster_number:
+    clusters_number = list(range(1, max_clusters))
+    for i in clusters_number:
         kmeans = KMeans(
             n_clusters=i, init="k-means++",
             n_init=10,
@@ -50,17 +52,19 @@ def elbow(dataset):
         kmeans.fit(X)
         inertia.append(kmeans.inertia_)
     #locating elbow point
-    kneedle = KneeLocator(cluster_number, inertia, S=1.0, curve="convex", direction="decreasing")
-    clusters_number = kneedle.knee
+    kneedle = KneeLocator(clusters_number, inertia, S=1.0, curve="convex", direction="decreasing")
+    cluster_number = kneedle.knee
     if (cluster_number != int):
-        kneedle = KneeLocator(cluster_number, inertia, S=0.0, curve="convex", direction="decreasing")
-        clusters_number = kneedle.knee
-    return clusters_number
+        kneedle = KneeLocator(clusters_number, inertia, S=0.0, curve="convex", direction="decreasing")
+        cluster_number = kneedle.knee
+        if cluster_number == None:
+            cluster_number = 1
+    return cluster_number
 
 def clustering(target, file_name, transformed_csv, ui):
 
 
-    print("transformed: ", transformed_csv.columns)
+    print("columnas en kmeans: ", transformed_csv.columns)
     name = file_name
     target_value = 1.0
 
@@ -75,17 +79,18 @@ def clustering(target, file_name, transformed_csv, ui):
     clusters_number = elbow(x)
 
     #Transformed dataframe labeled 
+    print("SHAPE: ", df.shape)
     df = pd.DataFrame(mainClustering(x, clusters_number))
     #Main clustering polar graph
-    polar=df.groupby("label").mean().reset_index()
-    polar=pd.melt(polar,id_vars=["label"])
-    fig0 = px.line_polar(polar, r="value", theta="variable", color="label", line_close=True,height=800,width=1400)
+    polar=df.groupby("big_group").mean().reset_index()
+    polar=pd.melt(polar,id_vars=["big_group"])
+    fig0 = px.line_polar(polar, r="value", theta="variable", color="big_group", line_close=True,height=800,width=1400)
     #fig0.show()
     fig0.write_image(f'./static/results_clustering/{ui}/main_cluster_img.png')
     #Main clustering pie plot to see clustering distribution
-    pie0=df.groupby('label').size().reset_index()
-    pie0.columns=['label','value']
-    pie0 = px.pie(pie0,values='value',names='label')
+    pie0=df.groupby('big_group').size().reset_index()
+    pie0.columns=['big_group','value']
+    pie0 = px.pie(pie0,values='value',names='big_group')
     #pie0.show()
     pie0.write_image(f'./static/results_clustering/{ui}/main_cluster_distribution.png')
 
@@ -95,31 +100,33 @@ def clustering(target, file_name, transformed_csv, ui):
     clust = 0 #iterator
     df[target] = y
     while clust < clusters_number:
-        dataframe = pd.DataFrame(df.loc[df['label'] == clust]) #Filter by cluster
+        dataframe = pd.DataFrame(df.loc[df['big_group'] == clust]) #Filter by cluster
         dataframe = dataframe.loc[dataframe[target] == target_value] #Filter by positive targets
-        dataframe = dataframe.drop(columns=[target,'label'])
+        dataframe = dataframe.drop(columns=[target,'big_group'])
         dataframe.to_csv(f'./static/results_clustering/{ui}/cluster{clust}.csv') #creating filtered cvs 
         clust = clust + 1 #iterator
 
     clust = 0 #iterator
     while clust < clusters_number:
         sub_cluster = pd.read_csv(f'./static/results_clustering/{ui}/cluster{clust}.csv') #read every subcluster .csv
-        sub_cluster = sub_cluster.drop(columns=['Unnamed: 0']) #drop the added column
         if sub_cluster.shape[0] == 0:
+            sub_cluster = sub_cluster.drop(columns=['Unnamed: 0']) #drop the added column
             clust = clust + 1
         else:
+            sub_cluster = sub_cluster.drop(columns=['Unnamed: 0']) #drop the added column
             sub_clusters_number = elbow(sub_cluster) #calculate elbow point for every sub-cluster
+            print("subcluster: ", sub_clusters_number)
             clusters = pd.DataFrame(mainClustering(sub_cluster, sub_clusters_number)) #k-means clustering method
             #polar sub-clusters graph
-            sub_polar=clusters.groupby("label").mean().reset_index() 
-            sub_polar=pd.melt(sub_polar,id_vars=["label"])
-            fig = px.line_polar(sub_polar, r="value", theta="variable", color="label", line_close=True,height=800,width=1400)
+            sub_polar=clusters.groupby("big_group").mean().reset_index() 
+            sub_polar=pd.melt(sub_polar,id_vars=["big_group"])
+            fig = px.line_polar(sub_polar, r="value", theta="variable", color="big_group", line_close=True,height=800,width=1400)
             #fig.show() #print here
             fig.write_image(f'./static/results_clustering/{ui}/cluster{clust}img.png') #save as .png file
             #Pie plot to see sub-cluster's distribution
-            pie=clusters.groupby('label').size().reset_index()
-            pie.columns=['label','value']
-            pie = px.pie(pie,values='value',names='label')
+            pie=clusters.groupby('big_group').size().reset_index()
+            pie.columns=['big_group','value']
+            pie = px.pie(pie,values='value',names='big_group')
             #pie.show() #print here
             pie.write_image(f'./static/results_clustering/{ui}/cluster{clust}distribution.png') #save as .png file
             clust = clust + 1
