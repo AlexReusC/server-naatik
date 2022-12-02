@@ -18,11 +18,9 @@ import matplotlib.pyplot as plt
 #Clustering function
 def mainClustering(dataframe, clusters_number):
     dataframe.reset_index
-    print("DF2_ ", dataframe.shape)
-    print("N CLUST_ ", clusters_number)
     #k-means algorithm
     kmeans = KMeans(
-            n_clusters=clusters_number, #number of clusters for general dataset
+            n_clusters=min(clusters_number, dataframe.shape[0]), #number of clusters for general dataset
             init="k-means++",
             n_init=10,
             tol=1e-04, 
@@ -45,9 +43,9 @@ def elbow(dataset):
     clusters_number = list(range(1, max_clusters))
     for i in clusters_number:
         kmeans = KMeans(
-            n_clusters=i, init="k-means++",
+            n_clusters=min(i, dataset.shape[0]), init="k-means++",
             n_init=10,
-            tol=1e-04, random_state=42
+            tol=1e-04, random_state=42,
         )
         kmeans.fit(X)
         inertia.append(kmeans.inertia_)
@@ -64,7 +62,6 @@ def elbow(dataset):
 def clustering(target, file_name, transformed_csv, ui):
 
 
-    print("columnas en kmeans: ", transformed_csv.columns)
     name = file_name
     target_value = 1.0
 
@@ -79,7 +76,6 @@ def clustering(target, file_name, transformed_csv, ui):
     clusters_number = elbow(x)
 
     #Transformed dataframe labeled 
-    print("SHAPE: ", df.shape)
     df = pd.DataFrame(mainClustering(x, clusters_number))
     #Main clustering polar graph
     polar=df.groupby("big_group").mean().reset_index()
@@ -109,13 +105,13 @@ def clustering(target, file_name, transformed_csv, ui):
     clust = 0 #iterator
     while clust < clusters_number:
         sub_cluster = pd.read_csv(f'./static/results_clustering/{ui}/cluster{clust}.csv') #read every subcluster .csv
+        print("clust: ", sub_cluster, clust, sub_cluster.shape[0])
         if sub_cluster.shape[0] == 0:
             sub_cluster = sub_cluster.drop(columns=['Unnamed: 0']) #drop the added column
             clust = clust + 1
         else:
             sub_cluster = sub_cluster.drop(columns=['Unnamed: 0']) #drop the added column
             sub_clusters_number = elbow(sub_cluster) #calculate elbow point for every sub-cluster
-            print("subcluster: ", sub_clusters_number)
             clusters = pd.DataFrame(mainClustering(sub_cluster, sub_clusters_number)) #k-means clustering method
             #polar sub-clusters graph
             sub_polar=clusters.groupby("big_group").mean().reset_index() 

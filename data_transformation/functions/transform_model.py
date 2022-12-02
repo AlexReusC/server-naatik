@@ -222,9 +222,9 @@ def transform_df_model(original_name_dataset, target_column_name):
     percentage_no_churn = (number_no_churn * 100) / target_column_original.size
 
     # Saving the general aspects in a df
-    d = {'total':[target_column_original.size], 'number_churn': [number_churn], 'number_no_churn': [number_no_churn], 'percentage_churn': [percentage_churn], 'percentage_no_churn': [percentage_no_churn]}
-    general_aspects_original = pd.DataFrame(data=d)
-    dump(general_aspects_original, f'./data_transformation/joblibs/{original_name_dataset}/etl/general_aspects_original.joblib')
+    d = {'total':target_column_original.size, 'number_churn': number_churn, 'number_no_churn': number_no_churn, 'percentage_churn': round(percentage_churn,2), 'percentage_no_churn': round(percentage_no_churn,2)}
+    #general_aspects_original = pd.DataFrame(data=d)
+    dump(d, f'./data_transformation/joblibs/{original_name_dataset}/etl/general_aspects_original.joblib')
 
 
     # Dividing the target and labels

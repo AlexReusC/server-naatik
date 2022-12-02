@@ -114,13 +114,20 @@ def split_by_big_groups(df):
 		big_groups.append(tmp_group)
 	return big_groups
 
-def mock_big_groups(df):
-	np.random.seed(42)
-	df["big_group"] = np.random.randint(1, 4, size=len(df))
+def append_big_groups(df, ui):
+	cluster_df = pd.read_csv(f"./static/results_clustering/{ui}/main_cluster.csv")
+	df["big_group"] = cluster_df["big_group"]
 	return df
 
 def transformModel(original_name_dataset, target_column_name):
 	transform_df_model(original_name_dataset, target_column_name)
+
+def cleanfilename(string):
+    string = string.replace("_", "") # delete underscores
+    string = string.replace("-", "") # delete dash
+    string = string.replace(" ", "") # delete blank spaces
+
+    return string
 
 app = Flask(__name__)
 CORS(app)
@@ -138,6 +145,10 @@ def run_models():
 		#get parameters
 		os.makedirs(f'./data_transformation/joblibs',exist_ok=True)
 		filename = request.files["data"].filename.split('.')[0]
+
+
+		filename = cleanfilename(filename)
+
 		df = pd.read_csv(request.files["data"])
 		df.to_csv(f'./raw_data/{filename}.csv')
 
@@ -154,7 +165,7 @@ def run_models():
 
 		# file_name = json.loads(request.form["file_name"])
 		threshold1, threshold2, threshold3 = get_thresholds(slides)
-
+		general_info_churn_data = None
 		if action == 'train':
 			# todo lo de train
 
@@ -175,6 +186,8 @@ def run_models():
 			new_df.to_csv(f'./data/{filename}/{filename}_new.csv', index=False)
 			make_etl_transformation(filename, filename)
 
+			# get general information about churn data from joblib
+			general_info_churn_data = load(f'./data_transformation/joblibs/{filename}/etl/general_aspects_original.joblib')
 
 		elif action == 'predict':
 			# todo lo de predict
@@ -185,10 +198,15 @@ def run_models():
 			# etl
 			new_df = pd.read_csv('./data/'+filename+'/'+filename+'.csv')
 			new_df.to_csv(f'./data/{filename}/{filename}_new.csv', index=False)
-			get_original_train_file_name = custom_model_to_predict.split('.')[0]
-			get_original_train_file_name = get_original_train_file_name.split('_')[2]
-			make_etl_transformation(get_original_train_file_name, filename)
+			getCompleteFilename = custom_model_to_predict.split('.')[0]
+			getOnlyFilenameLeft = getCompleteFilename.split('mlp_model_')[1]
+			getmodelName = getOnlyFilenameLeft.split('_')[0]
+			make_etl_transformation(getmodelName, filename)
 
+			# get general information about churn data from joblib
+			general_info_churn_data = load(f'./data_transformation/joblibs/{getmodelName}/etl/general_aspects_original.joblib')
+
+		
 		# read that transformed csv
 		df_encoded = pd.read_csv('./data/'+filename+'/'+filename+'_new_transformed.csv')
 
@@ -203,7 +221,6 @@ def run_models():
 		prediction_dataframe = add_probability_labels(prediction, threshold1, threshold2, threshold3)
 		df = df.join(prediction_dataframe)
 
-		df = mock_big_groups(df)
 
 
 		os.makedirs("breakdownPredictions", exist_ok=True)
@@ -211,13 +228,10 @@ def run_models():
 
 		#clustering
 		df_to_clustering = df_encoded
-		print("COLUMNS ANTES DE MANDAR A KMEANS: ", df_to_clustering.columns)
 		df_to_clustering[target] = np.array(prediction_binary)
-		df_to_clustering.to_csv("./aaaaaaaaaaaaa.csv")
 
 		clustering(target, filename, df_to_clustering, ui)
 
-		big_groups = split_by_big_groups(df)
 
 		# get clustering
 		cluster_files = os.listdir(f'static/results_clustering/{ui}')
@@ -228,8 +242,33 @@ def run_models():
 				url = url_for('static', filename=f'results_clustering/{ui}/{file}')
 				arr_clustering[file.split('.')[0]] = url
 
+		df = append_big_groups(df, ui)
+		big_groups = split_by_big_groups(df)
+
 		info = []
+		arr_all_clusts_groups = []
 		for i, group in enumerate(big_groups):
+
+			
+			file_exists = os.path.exists(f'static/results_clustering/{ui}/cluster{i}distribution.png')
+			cluster_files = os.listdir(f'static/results_clustering/{ui}')
+			images_clusting_group = {}
+			print("item to search : " , f'cluster{i}distribution.png')
+			if f'cluster{i}distribution.png' in cluster_files:
+				print("item founded : " , f'cluster{i}distribution.png')
+				images_clusting_group = {
+					"distribution": url_for('static', filename=f'results_clustering/{ui}/cluster{i}distribution.png'),
+					"polar_plot": url_for('static', filename=f'results_clustering/{ui}/cluster{i}img.png')
+				}
+
+				images_clusting_group_with_number = {
+						"group":i+1,
+						"distribution": url_for('static', filename=f'results_clustering/{ui}/cluster{i}distribution.png'),
+						"polar_plot": url_for('static', filename=f'results_clustering/{ui}/cluster{i}img.png')
+
+				}		
+				arr_all_clusts_groups.append(images_clusting_group_with_number)		
+
 			little_group1, little_group2, little_group3, little_group4 = split_by_little_groups(group, threshold1, threshold2, threshold3)
 			#little_group1, little_group2, little_group3, little_group4 = add_bill_amount(little_group1, little_group2, little_group3, little_group4)
 			#little_group1_acc, little_group2_acc, little_group3_acc, little_group4_acc = get_little_groups_accs(little_group1, little_group2, little_group3, little_group4)
@@ -248,17 +287,14 @@ def run_models():
 						"group4": len(little_group4),
 					},
 					"all_groups": len(group),
-					"clusting": {
-						"distribution": url_for('static', filename=f'results_clustering/{ui}/cluster{i}distribution.png'),
-						"polar_plot": url_for('static', filename=f'results_clustering/{ui}/cluster{i}img.png')
-					}
+					"clusting": images_clusting_group
 				} )
 
 		fileRows = get_original_file_rows(df)
 
 
 
-		return jsonify({"ui": ui, "fileRows": fileRows, "info": info, "clustering": arr_clustering}), 200
+		return jsonify({"ui": ui, "fileRows": fileRows, "info": info, "clustering": arr_clustering, 'all_clusts':arr_all_clusts_groups, "general_info_churn_data": general_info_churn_data}), 200
 
 @app.route('/retrievecsv', methods=["GET"])
 def retrieve_csv():
@@ -316,4 +352,11 @@ def getclusters():
 def getmodels():
 	if request.method == "GET":
 		trained_models = os.listdir(f'./trained_models/')
-		return  trained_models,200
+		only_custom_names = []
+		for item in trained_models:
+			getCompleteFilename = item.split('.')[0]
+			getOnlyFilenameLeft = getCompleteFilename.split('mlp_model_')[1]
+			getmodelName = getOnlyFilenameLeft.rsplit('_', 1)[0]
+			only_custom_names.append(getOnlyFilenameLeft)
+		obj = {'models': trained_models, 'names': only_custom_names  }
+		return  obj,200

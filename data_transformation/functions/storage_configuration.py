@@ -1,6 +1,9 @@
 import os, shutil
 
+
+
 def configure_storage(dataset_path, original_name_dataset):
+
     try:
         shutil.rmtree(f'./data/{original_name_dataset}')
     except:
