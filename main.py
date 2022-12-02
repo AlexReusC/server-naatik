@@ -69,9 +69,9 @@ def save_graphs_images(group1, group2, group3, group4, ui, i):
 		pie_little_groups.write_image(f"static/graphs/{ui}/{i}/pie.png")
 		histogram_little_groups.write_image(f"static/graphs/{ui}/{i}/histogram.png")
 
-def differences_churn_nochurn(df, threshold1, ui, i):
-		churn = df[df["Probabilidad de churn"] < threshold1].drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn"], axis = 1, errors="ignore")
-		nochurn = df[df["Probabilidad de churn"] >= threshold1].drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn"], axis = 1, errors="ignore")
+def differences_churn_nochurn(df, threshold1, ui, i, target):
+		churn = df[df["Probabilidad de churn"] < threshold1].drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn", target], axis = 1, errors="ignore")
+		nochurn = df[df["Probabilidad de churn"] >= threshold1].drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn", target], axis = 1, errors="ignore")
 
 		differences = None
 		state = "both"
@@ -85,8 +85,8 @@ def differences_churn_nochurn(df, threshold1, ui, i):
 
 		return state, differences
 
-def get_original_file_rows(df):
-	df = df.drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn"], axis = 1, errors="ignore")
+def get_original_file_rows(df, target):
+	df = df.drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn", target], axis = 1, errors="ignore")
 	column_names = list(df.columns.values)
 	return column_names
 
@@ -166,6 +166,8 @@ def run_models():
 		# file_name = json.loads(request.form["file_name"])
 		threshold1, threshold2, threshold3 = get_thresholds(slides)
 		general_info_churn_data = None
+		confussion_matrix = None
+		model_accuracy = None
 		if action == 'train':
 			# todo lo de train
 
@@ -189,6 +191,11 @@ def run_models():
 			# get general information about churn data from joblib
 			general_info_churn_data = load(f'./data_transformation/joblibs/{filename}/etl/general_aspects_original.joblib')
 
+			# get confussion matrix of model 
+			confussion_matrix = load(f"./data_transformation/joblibs/{filename}/model/mlp/confusion_matrix.joblib")
+
+			# get accuracy of model 
+			model_accuracy = load(f"./data_transformation/joblibs/{filename}/model/mlp/accuracy.joblib")
 		elif action == 'predict':
 			# todo lo de predict
 			configure_storage(f'./raw_data/{filename}.csv', filename)
@@ -205,6 +212,12 @@ def run_models():
 
 			# get general information about churn data from joblib
 			general_info_churn_data = load(f'./data_transformation/joblibs/{getmodelName}/etl/general_aspects_original.joblib')
+
+			# get confussion matrix of model 
+			confussion_matrix = load(f"./data_transformation/joblibs/{getmodelName}/model/mlp/confusion_matrix.joblib")
+
+			# get accuracy of model 
+			model_accuracy = load(f"./data_transformation/joblibs/{getmodelName}/model/mlp/accuracy.joblib")
 
 		
 		# read that transformed csv
@@ -273,7 +286,7 @@ def run_models():
 			#little_group1, little_group2, little_group3, little_group4 = add_bill_amount(little_group1, little_group2, little_group3, little_group4)
 			#little_group1_acc, little_group2_acc, little_group3_acc, little_group4_acc = get_little_groups_accs(little_group1, little_group2, little_group3, little_group4)
 			save_graphs_images(little_group1, little_group2, little_group3, little_group4,ui, i+1)
-			state, differences = differences_churn_nochurn(group, threshold1, ui, i+1)
+			state, differences = differences_churn_nochurn(group, threshold1, ui, i+1, target)
 			info.append(
 				{
 					"i": i+1,
@@ -290,11 +303,11 @@ def run_models():
 					"clusting": images_clusting_group
 				} )
 
-		fileRows = get_original_file_rows(df)
+		fileRows = get_original_file_rows(df, target)
 
 
 
-		return jsonify({"ui": ui, "fileRows": fileRows, "info": info, "clustering": arr_clustering, 'all_clusts':arr_all_clusts_groups, "general_info_churn_data": general_info_churn_data}), 200
+		return jsonify({"ui": ui, "fileRows": fileRows, "info": info, "clustering": arr_clustering, 'all_clusts':arr_all_clusts_groups, "general_info_churn_data": general_info_churn_data, "confussion_matrix": confussion_matrix, 'model_accuracy': model_accuracy}), 200
 
 @app.route('/retrievecsv', methods=["GET"])
 def retrieve_csv():

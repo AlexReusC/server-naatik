@@ -61,8 +61,9 @@ def train_mlp(target_column_name, original_name_dataset, smote, model_filename_r
     model_accuracy = (f"Accuracy of Model: {percentage}")
 
     # Confussion Matrix
-    confussion_matrix = pd.DataFrame(cm)
+    confussion_matrix = cm.tolist()
     dump(confussion_matrix, f"./data_transformation/joblibs/{original_name_dataset}/model/mlp/confusion_matrix.joblib")
+    dump(percentage, f"./data_transformation/joblibs/{original_name_dataset}/model/mlp/accuracy.joblib")
 
 
     predicted_true_positive_percentage = cm[1,1] / (cm[1,1] + cm[0,1])
