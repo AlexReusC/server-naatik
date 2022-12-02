@@ -11,6 +11,8 @@ data/
 raw_data/
 data_transformation/joblibs/
 breakdownPredictions/
+results_clustering/
+trained_models/
 #Static files
 static/
 

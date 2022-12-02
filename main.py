@@ -20,14 +20,19 @@ from model_mlp_train import train_mlp
 from data_transformation.functions.transform_model import transform_df_model
 from data_transformation.functions.storage_configuration import configure_storage
 
+
+# import clustering module
+from kmeans import mainClustering, elbow, clustering
+
+
 def get_probability_churn(probabilities):
 	return list(map(lambda x: x[1], probabilities))
 
-def make_etl_transformation(original_name_dataset):
-	transform_df_predict(original_name_dataset)
+def make_etl_transformation(original_name_dataset, file_to_predict):
+	transform_df_predict(original_name_dataset,file_to_predict)
 
-def train_model(target,filename, smote):
-	train_mlp(target,filename, smote)
+def train_model(target,filename, smote, model_filename_requested_by_user):
+	train_mlp(target,filename, smote, model_filename_requested_by_user)
 
 def get_thresholds(slides):
 		threshold1, threshold2, threshold3 = slides["first-slide"], slides["second-slide"], slides["third-slide"]
@@ -64,9 +69,9 @@ def save_graphs_images(group1, group2, group3, group4, ui, i):
 		pie_little_groups.write_image(f"static/graphs/{ui}/{i}/pie.png")
 		histogram_little_groups.write_image(f"static/graphs/{ui}/{i}/histogram.png")
 
-def differences_churn_nochurn(df, threshold1, ui, i):
-		churn = df[df["Probabilidad de churn"] < threshold1].drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn"], axis = 1, errors="ignore")
-		nochurn = df[df["Probabilidad de churn"] >= threshold1].drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn"], axis = 1, errors="ignore")
+def differences_churn_nochurn(df, threshold1, ui, i, target):
+		churn = df[df["Probabilidad de churn"] < threshold1].drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn", target], axis = 1, errors="ignore")
+		nochurn = df[df["Probabilidad de churn"] >= threshold1].drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn", target], axis = 1, errors="ignore")
 
 		differences = None
 		state = "both"
@@ -80,8 +85,8 @@ def differences_churn_nochurn(df, threshold1, ui, i):
 
 		return state, differences
 
-def get_original_file_rows(df):
-	df = df.drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn"], axis = 1, errors="ignore")
+def get_original_file_rows(df, target):
+	df = df.drop(["big_group", "Unnamed: 0", "Etiquetas de churn", "Probabilidad de churn", target], axis = 1, errors="ignore")
 	column_names = list(df.columns.values)
 	return column_names
 
@@ -109,13 +114,20 @@ def split_by_big_groups(df):
 		big_groups.append(tmp_group)
 	return big_groups
 
-def mock_big_groups(df):
-	np.random.seed(42)
-	df["big_group"] = np.random.randint(1, 4, size=len(df))
+def append_big_groups(df, ui):
+	cluster_df = pd.read_csv(f"./static/results_clustering/{ui}/main_cluster.csv")
+	df["big_group"] = cluster_df["big_group"]
 	return df
 
 def transformModel(original_name_dataset, target_column_name):
 	transform_df_model(original_name_dataset, target_column_name)
+
+def cleanfilename(string):
+    string = string.replace("_", "") # delete underscores
+    string = string.replace("-", "") # delete dash
+    string = string.replace(" ", "") # delete blank spaces
+
+    return string
 
 app = Flask(__name__)
 CORS(app)
@@ -129,85 +141,155 @@ def run_models():
 
 
 	if request.method == "POST" and request.files:
+		ui = str(uuid.uuid4())
 		#get parameters
 		os.makedirs(f'./data_transformation/joblibs',exist_ok=True)
-		print("name: ",request.files["data"].filename.split('.')[0])
 		filename = request.files["data"].filename.split('.')[0]
+
+
+		filename = cleanfilename(filename)
+
 		df = pd.read_csv(request.files["data"])
 		df.to_csv(f'./raw_data/{filename}.csv')
+
+		# creating the folders for the clustering
+		os.makedirs(f'./static/results_clustering/{ui}',exist_ok=True)
+
 		# make 1st step to training 
 
 		target = json.loads(request.form["target"])
 		slides = json.loads(request.form["slides"])
-		
-		configure_storage(f'./raw_data/{filename}.csv', filename)
-		transformModel(filename,target)
-
-		print("paso transform model")
-		# make etl that create a file called transformed_new.csv
-		#df = df.drop(['Unnamed: 0'])
-
-
+		action = json.loads(request.form["action"])
+		custom_model_to_predict = ''
+		model_filename_requested_by_user = ''
 
 		# file_name = json.loads(request.form["file_name"])
 		threshold1, threshold2, threshold3 = get_thresholds(slides)
+		general_info_churn_data = None
+		confussion_matrix = None
+		model_accuracy = None
+		if action == 'train':
+			# todo lo de train
 
-		#train model
-		# agregar validacion de si existe la columna.
-		train_model(target,filename, False)
-		print("ya se entreno.")
+			configure_storage(f'./raw_data/{filename}.csv', filename)
+			transformModel(filename,target)
 
-		# cargamos modelo
-		prediction_model = load("./data_transformation/joblibs/"+filename+"/model/mlp/mlp_model.joblib")
+			model_filename_requested_by_user = json.loads(request.form["model_name"])
 
-		# etl
+			#train model
+			# agregar validacion de si existe la columna.
+			train_model(target,filename, False, model_filename_requested_by_user)
+
+			prediction_model = load("./trained_models/mlp_model_"+filename+"_"+model_filename_requested_by_user+".joblib")
+			df = pd.read_csv('./data/'+filename+'/'+filename+'.csv')
+			new_df = df.drop([target], axis=1 )
+
+			# etl
+			new_df.to_csv(f'./data/{filename}/{filename}_new.csv', index=False)
+			make_etl_transformation(filename, filename)
+
+			# get general information about churn data from joblib
+			general_info_churn_data = load(f'./data_transformation/joblibs/{filename}/etl/general_aspects_original.joblib')
+
+			# get confussion matrix of model 
+			confussion_matrix = load(f"./data_transformation/joblibs/{filename}/model/mlp/confusion_matrix.joblib")
+
+			# get accuracy of model 
+			model_accuracy = load(f"./data_transformation/joblibs/{filename}/model/mlp/accuracy.joblib")
+		elif action == 'predict':
+			# todo lo de predict
+			configure_storage(f'./raw_data/{filename}.csv', filename)
+			custom_model_to_predict = json.loads(request.form["custom_model"])
+			prediction_model = load("./trained_models/"+custom_model_to_predict)
+
+			# etl
+			new_df = pd.read_csv('./data/'+filename+'/'+filename+'.csv')
+			new_df.to_csv(f'./data/{filename}/{filename}_new.csv', index=False)
+			getCompleteFilename = custom_model_to_predict.split('.')[0]
+			getOnlyFilenameLeft = getCompleteFilename.split('mlp_model_')[1]
+			getmodelName = getOnlyFilenameLeft.split('_')[0]
+			make_etl_transformation(getmodelName, filename)
+
+			# get general information about churn data from joblib
+			general_info_churn_data = load(f'./data_transformation/joblibs/{getmodelName}/etl/general_aspects_original.joblib')
+
+			# get confussion matrix of model 
+			confussion_matrix = load(f"./data_transformation/joblibs/{getmodelName}/model/mlp/confusion_matrix.joblib")
+
+			# get accuracy of model 
+			model_accuracy = load(f"./data_transformation/joblibs/{getmodelName}/model/mlp/accuracy.joblib")
+
 		
-		new_df = pd.read_csv('./data/'+filename+'/'+filename+'.csv')
-		print(new_df.columns)
-		new_df = new_df.drop([target], axis=1 )
-		new_df.to_csv(f'./data/{filename}/{filename}_new.csv', index=False)
-		make_etl_transformation(filename)
-
 		# read that transformed csv
 		df_encoded = pd.read_csv('./data/'+filename+'/'+filename+'_new_transformed.csv')
 
-		print("paso etl")
-
-		#prediction
+		#prediction proba
 		prediction = prediction_model.predict_proba(df_encoded)
 		prediction = get_probability_churn(prediction)
+
+		#prediction with 1 and 0
+		prediction_binary = prediction_model.predict(df_encoded)
 
 		#create file
 		prediction_dataframe = add_probability_labels(prediction, threshold1, threshold2, threshold3)
 		df = df.join(prediction_dataframe)
 
-		df = mock_big_groups(df)
 
-		ui = str(uuid.uuid4())
+
 		os.makedirs("breakdownPredictions", exist_ok=True)
 		df.to_csv(f"breakdownPredictions/{ui}.csv")
 
+		#clustering
+		df_to_clustering = df_encoded
+		df_to_clustering[target] = np.array(prediction_binary)
+
+		clustering(target, filename, df_to_clustering, ui)
+
+
+		# get clustering
+		cluster_files = os.listdir(f'static/results_clustering/{ui}')
+		arr_clustering = {}
+		# loop over the image paths
+		for file in cluster_files:
+			if (file.split('.')[1] == 'png'):
+				url = url_for('static', filename=f'results_clustering/{ui}/{file}')
+				arr_clustering[file.split('.')[0]] = url
+
+		df = append_big_groups(df, ui)
 		big_groups = split_by_big_groups(df)
 
-
 		info = []
+		arr_all_clusts_groups = []
 		for i, group in enumerate(big_groups):
-			print("big_group", group)
+
+			
+			file_exists = os.path.exists(f'static/results_clustering/{ui}/cluster{i}distribution.png')
+			cluster_files = os.listdir(f'static/results_clustering/{ui}')
+			images_clusting_group = {}
+			print("item to search : " , f'cluster{i}distribution.png')
+			if f'cluster{i}distribution.png' in cluster_files:
+				print("item founded : " , f'cluster{i}distribution.png')
+				images_clusting_group = {
+					"distribution": url_for('static', filename=f'results_clustering/{ui}/cluster{i}distribution.png'),
+					"polar_plot": url_for('static', filename=f'results_clustering/{ui}/cluster{i}img.png')
+				}
+
+				images_clusting_group_with_number = {
+						"group":i+1,
+						"distribution": url_for('static', filename=f'results_clustering/{ui}/cluster{i}distribution.png'),
+						"polar_plot": url_for('static', filename=f'results_clustering/{ui}/cluster{i}img.png')
+
+				}		
+				arr_all_clusts_groups.append(images_clusting_group_with_number)		
+
 			little_group1, little_group2, little_group3, little_group4 = split_by_little_groups(group, threshold1, threshold2, threshold3)
-			little_group1, little_group2, little_group3, little_group4 = add_bill_amount(little_group1, little_group2, little_group3, little_group4)
-			little_group1_acc, little_group2_acc, little_group3_acc, little_group4_acc = get_little_groups_accs(little_group1, little_group2, little_group3, little_group4)
+			#little_group1, little_group2, little_group3, little_group4 = add_bill_amount(little_group1, little_group2, little_group3, little_group4)
+			#little_group1_acc, little_group2_acc, little_group3_acc, little_group4_acc = get_little_groups_accs(little_group1, little_group2, little_group3, little_group4)
 			save_graphs_images(little_group1, little_group2, little_group3, little_group4,ui, i+1)
-			state, differences = differences_churn_nochurn(group, threshold1, ui, i+1)
+			state, differences = differences_churn_nochurn(group, threshold1, ui, i+1, target)
 			info.append(
 				{
 					"i": i+1,
-					"acc": 
-					{ 
-						"group1": round(little_group1_acc.values[0],2),
-						"group2": round(little_group2_acc.values[0],2),
-						"group3": round(little_group3_acc.values[0],2),
-						"group4": round(little_group4_acc.values[0],2)
-					},
 					"differences": differences,
 					"state": state,
 					"total":
@@ -217,13 +299,15 @@ def run_models():
 						"group3": len(little_group3),
 						"group4": len(little_group4),
 					},
-					"all_groups": len(group)
-
+					"all_groups": len(group),
+					"clusting": images_clusting_group
 				} )
 
-		fileRows = get_original_file_rows(df)
+		fileRows = get_original_file_rows(df, target)
 
-		return jsonify({"ui": ui, "fileRows": fileRows, "info": info}), 200
+
+
+		return jsonify({"ui": ui, "fileRows": fileRows, "info": info, "clustering": arr_clustering, 'all_clusts':arr_all_clusts_groups, "general_info_churn_data": general_info_churn_data, "confussion_matrix": confussion_matrix, 'model_accuracy': model_accuracy}), 200
 
 @app.route('/retrievecsv', methods=["GET"])
 def retrieve_csv():
@@ -261,3 +345,31 @@ def getgraphs():
 			url = url_for('static', filename=f'graphs/{ui}/{i}/{image_file}')
 			arr.append(url)
 		return arr, 200
+
+@app.route('/getclusters', methods=["GET"])
+def getclusters():
+	if request.method == "GET" and request.args.get("ui"):
+
+		ui = request.args.get("ui")
+		cluster_files = os.listdir(f'static/results_clustering/{ui}')
+		arr = []
+		# loop over the image paths
+		for file in cluster_files:
+			if (file.split('.')[1] == 'png'):
+				url = url_for('static', filename=f'results_clustering/{ui}/{file}')
+				arr.append(url)
+		return arr, 200
+
+
+@app.route('/getmodels', methods=["GET"])
+def getmodels():
+	if request.method == "GET":
+		trained_models = os.listdir(f'./trained_models/')
+		only_custom_names = []
+		for item in trained_models:
+			getCompleteFilename = item.split('.')[0]
+			getOnlyFilenameLeft = getCompleteFilename.split('mlp_model_')[1]
+			getmodelName = getOnlyFilenameLeft.rsplit('_', 1)[0]
+			only_custom_names.append(getOnlyFilenameLeft)
+		obj = {'models': trained_models, 'names': only_custom_names  }
+		return  obj,200

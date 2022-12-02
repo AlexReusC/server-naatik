@@ -17,11 +17,18 @@ def transform_df_model(original_name_dataset, target_column_name):
 
     df = pd.read_csv(f'./data/'+original_name_dataset+'/'+original_name_dataset+'.csv')
 
+    # Defining the target column
+    y = target_column_name
+
+    target_column_original = df[y]
+
      # Calculating the total cells per client (rows per client times the columns)
     cells_per_client = len(df.columns)
 
     # Calculating the total non null cells per client
     non_null_cells_per_client = df.count(axis=1)
+
+
 
     # Calculating the total non null cells per client in terms of percentages
     percentages_non_null_cells_per_clients = (non_null_cells_per_client * 100) / (cells_per_client)
@@ -206,6 +213,19 @@ def transform_df_model(original_name_dataset, target_column_name):
         x_train, y_train = sm.fit_resample(train.drop([y], axis=1), train[y])
     except:
         error_smote = True
+
+    # Calculating the general aspects of the dataset
+    target_column_original = le.transform(target_column_original)
+    number_churn = np.count_nonzero(target_column_original == 1)
+    number_no_churn = np.count_nonzero(target_column_original == 0)
+    percentage_churn = (number_churn * 100) / target_column_original.size
+    percentage_no_churn = (number_no_churn * 100) / target_column_original.size
+
+    # Saving the general aspects in a df
+    d = {'total':target_column_original.size, 'number_churn': number_churn, 'number_no_churn': number_no_churn, 'percentage_churn': round(percentage_churn,2), 'percentage_no_churn': round(percentage_no_churn,2)}
+    #general_aspects_original = pd.DataFrame(data=d)
+    dump(d, f'./data_transformation/joblibs/{original_name_dataset}/etl/general_aspects_original.joblib')
+
 
     # Dividing the target and labels
     y_test = pd.DataFrame(test[y])

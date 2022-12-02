@@ -12,7 +12,7 @@ import warnings
 
 
 # Function that trains the model mlp
-def train_mlp(target_column_name, original_name_dataset, smote):
+def train_mlp(target_column_name, original_name_dataset, smote, model_filename_requested_by_user):
 
     warnings.filterwarnings("ignore")
 
@@ -53,7 +53,7 @@ def train_mlp(target_column_name, original_name_dataset, smote):
 
 
     #Evaluataion of the predictions against the actual observations in y_val
-    cm = confusion_matrix(y_pred, y_test)
+    cm = confusion_matrix(y_test, y_pred)
 
     #Storing the accuracy
     acc = round(accuracy(cm),2)
@@ -61,7 +61,18 @@ def train_mlp(target_column_name, original_name_dataset, smote):
     model_accuracy = (f"Accuracy of Model: {percentage}")
 
     # Confussion Matrix
-    confussion_matrix = pd.DataFrame(cm)
+    confussion_matrix = cm.tolist()
+    dump(confussion_matrix, f"./data_transformation/joblibs/{original_name_dataset}/model/mlp/confusion_matrix.joblib")
+    dump(percentage, f"./data_transformation/joblibs/{original_name_dataset}/model/mlp/accuracy.joblib")
+
+
+    predicted_true_positive_percentage = cm[1,1] / (cm[1,1] + cm[0,1])
+    predicted_true_negative_percentage = cm[0,0] / (cm[0,0] + cm[1,0])
+
+    # Saving the general aspects in a df
+    d = {'predicted_true_positive_percentage': [predicted_true_positive_percentage], 'predicted_true_negative_percentage': [predicted_true_negative_percentage]}
+    true_predicted_percentage = pd.DataFrame(data=d)
+    dump(true_predicted_percentage, f"./data_transformation/joblibs/{original_name_dataset}/model/mlp/true_predicted_percentage.joblib")
 
     # K-Fold Cross-Validation
     def cross_validation(model, _X, _y, _cv=3):
@@ -113,7 +124,6 @@ def train_mlp(target_column_name, original_name_dataset, smote):
     mlp_results = cross_validation(classifier, x_train, y_train)
 
     # Plot Accuracy Result
-    print('Printing the K-fold Cross Validation')
     model_name = "MLP"
     plot_result(model_name,
                 "Accuracy",
@@ -128,27 +138,29 @@ def train_mlp(target_column_name, original_name_dataset, smote):
     y_train_true = y_train
     # MSE
     mse_train = mean_squared_error(y_train_true, y_train_predict)
-    print(f'MSE Train: {mse_train}')
     # Accuracy
     acc_train = accuracy_score(y_train_true, y_train_predict, normalize=True)
-    print(f'Accuracy Train: {acc_train}')
 
     # Test
     y_test_predict = classifier.predict(x_test)
     y_test_true = y_test
     # MSE
     mse_test = mean_squared_error(y_test_true, y_test_predict)
-    print(f'MSE Test: {mse_test}')
     # Accuracy
     acc_test = accuracy_score(y_test_true, y_test_predict, normalize=True)
-    print(f'Accuracy Test: {acc_test}')
 
 
-    # Storing the model
+    """# Storing the model
     if smote:
         dump(classifier, f"./data_transformation/joblibs/{original_name_dataset}/model/mlp/mlp_model_smote.joblib")
     else:    
-        dump(classifier, f"./data_transformation/joblibs/{original_name_dataset}/model/mlp/mlp_model.joblib")
+        dump(classifier, f"./data_transformation/joblibs/{original_name_dataset}/model/mlp/mlp_model.joblib")"""
+
+    if smote:
+        dump(classifier, f"./trained_models/mlp_model_smote_{original_name_dataset}_{model_filename_requested_by_user}.joblib")
+    else:    
+        dump(classifier, f"./trained_models/mlp_model_{original_name_dataset}_{model_filename_requested_by_user}.joblib")
+        
 
     # Returning the results of the training model
     return confussion_matrix, mlp_results
