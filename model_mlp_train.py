@@ -12,7 +12,7 @@ import warnings
 
 
 # Function that trains the model mlp
-def train_mlp(target_column_name, original_name_dataset, smote, model_filename_requested_by_user):
+def train_mlp(target_column_name, original_name_dataset, smote, model_filename_requested_by_user, hyperparametersObj):
 
     warnings.filterwarnings("ignore")
 
@@ -35,8 +35,12 @@ def train_mlp(target_column_name, original_name_dataset, smote, model_filename_r
         y_train = pd.DataFrame(train[target_column_name])
 
     #Initializing the MLPClassifier hyperparameters
-    classifier = MLPClassifier(alpha=1e-05, hidden_layer_sizes=(7, 5, 3), random_state=1, solver='lbfgs')
-
+    epochs =  int(hyperparametersObj['epochs'])
+    lr = float(hyperparametersObj['learning_rate'])
+    solvermlp = hyperparametersObj['optimization_algoritm'].lower()
+    activationmlp = hyperparametersObj['activation_function'].lower()
+ 
+    classifier = MLPClassifier(alpha=1e-05, hidden_layer_sizes=(7, 5, 3), max_iter=epochs, learning_rate_init=lr, solver=solvermlp, activation=activationmlp, random_state=1)
     #Fitting the training data to the network
     classifier.fit(x_train, y_train)
 

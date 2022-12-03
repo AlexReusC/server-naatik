@@ -31,8 +31,8 @@ def get_probability_churn(probabilities):
 def make_etl_transformation(original_name_dataset, file_to_predict):
 	transform_df_predict(original_name_dataset,file_to_predict)
 
-def train_model(target,filename, smote, model_filename_requested_by_user):
-	train_mlp(target,filename, smote, model_filename_requested_by_user)
+def train_model(target,filename, smote, model_filename_requested_by_user, hyperparametersObj):
+	train_mlp(target,filename, smote, model_filename_requested_by_user, hyperparametersObj)
 
 def get_thresholds(slides):
 		threshold1, threshold2, threshold3 = slides["first-slide"], slides["second-slide"], slides["third-slide"]
@@ -144,6 +144,7 @@ def run_models():
 		ui = str(uuid.uuid4())
 		#get parameters
 		os.makedirs(f'./data_transformation/joblibs',exist_ok=True)
+		os.makedirs(f'./hyperparams',exist_ok=True)
 		filename = request.files["data"].filename.split('.')[0]
 
 
@@ -168,17 +169,35 @@ def run_models():
 		general_info_churn_data = None
 		confussion_matrix = None
 		model_accuracy = None
+		hyperparametersObj = None
 		if action == 'train':
 			# todo lo de train
+			model_filename_requested_by_user = json.loads(request.form["model_name"])
+			hyperparameters = json.loads(request.form["hyperparameters"])
+
+			learning_rate = hyperparameters['learning_rate']
+			epochs = hyperparameters['epochs']
+			optimization_algoritm = hyperparameters['optimization_algorithm']
+			activation_function = hyperparameters['activation_function']
+
+			hyperparametersObj = {
+				'learning_rate':learning_rate,
+				'epochs': epochs,
+				'optimization_algoritm':optimization_algoritm,
+				'activation_function':activation_function
+			}
+
+			hyperparametersDf = pd.DataFrame(hyperparametersObj, columns=hyperparametersObj.keys(), index=[0])
+			hyperparametersDf.to_csv(f"./hyperparams/mlp_model_"+filename+"_"+model_filename_requested_by_user+".csv")
 
 			configure_storage(f'./raw_data/{filename}.csv', filename)
 			transformModel(filename,target)
 
-			model_filename_requested_by_user = json.loads(request.form["model_name"])
+
 
 			#train model
 			# agregar validacion de si existe la columna.
-			train_model(target,filename, False, model_filename_requested_by_user)
+			train_model(target,filename, False, model_filename_requested_by_user, hyperparametersObj)
 
 			prediction_model = load("./trained_models/mlp_model_"+filename+"_"+model_filename_requested_by_user+".joblib")
 			df = pd.read_csv('./data/'+filename+'/'+filename+'.csv')
@@ -196,6 +215,8 @@ def run_models():
 
 			# get accuracy of model 
 			model_accuracy = load(f"./data_transformation/joblibs/{filename}/model/mlp/accuracy.joblib")
+
+
 		elif action == 'predict':
 			# todo lo de predict
 			configure_storage(f'./raw_data/{filename}.csv', filename)
@@ -219,6 +240,19 @@ def run_models():
 			# get accuracy of model 
 			model_accuracy = load(f"./data_transformation/joblibs/{getmodelName}/model/mlp/accuracy.joblib")
 
+			#read csv 
+			hyperParamsDf = pd.read_csv(f'./hyperparams/{getCompleteFilename}.csv')
+			
+			hyperParamsDf = hyperParamsDf.to_dict()
+
+			print("KKKKKKK ", hyperParamsDf)
+			# obj to parse
+			hyperparametersObj = {
+				'learning_rate':hyperParamsDf['learning_rate'][0],
+				'epochs': hyperParamsDf['epochs'][0],
+				'optimization_algoritm':hyperParamsDf['optimization_algoritm'][0],
+				'activation_function':hyperParamsDf['activation_function'][0],
+			}
 		
 		# read that transformed csv
 		df_encoded = pd.read_csv('./data/'+filename+'/'+filename+'_new_transformed.csv')
@@ -266,9 +300,7 @@ def run_models():
 			file_exists = os.path.exists(f'static/results_clustering/{ui}/cluster{i}distribution.png')
 			cluster_files = os.listdir(f'static/results_clustering/{ui}')
 			images_clusting_group = {}
-			print("item to search : " , f'cluster{i}distribution.png')
 			if f'cluster{i}distribution.png' in cluster_files:
-				print("item founded : " , f'cluster{i}distribution.png')
 				images_clusting_group = {
 					"distribution": url_for('static', filename=f'results_clustering/{ui}/cluster{i}distribution.png'),
 					"polar_plot": url_for('static', filename=f'results_clustering/{ui}/cluster{i}img.png')
@@ -307,7 +339,7 @@ def run_models():
 
 
 
-		return jsonify({"ui": ui, "fileRows": fileRows, "info": info, "clustering": arr_clustering, 'all_clusts':arr_all_clusts_groups, "general_info_churn_data": general_info_churn_data, "confussion_matrix": confussion_matrix, 'model_accuracy': model_accuracy}), 200
+		return jsonify({"ui": ui, "fileRows": fileRows, "info": info, "clustering": arr_clustering, 'all_clusts':arr_all_clusts_groups, "general_info_churn_data": general_info_churn_data, "confussion_matrix": confussion_matrix, 'model_accuracy': model_accuracy, 'hyperparams_model':hyperparametersObj}), 200
 
 @app.route('/retrievecsv', methods=["GET"])
 def retrieve_csv():

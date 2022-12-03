@@ -198,6 +198,7 @@ def transform_df_model(original_name_dataset, target_column_name):
 
     # Test dataset
     no_rows_test = int((df.shape[0]+outliers.shape[0])*0.3)
+    outliers[target_column_name] = le.transform(outliers[target_column_name])
     test = outliers
     test = test.append(df[:no_rows_test-outliers.shape[0]]).reset_index()
     test = test.drop(['level_0', 'index'], axis=1)
