@@ -13,6 +13,7 @@ data_transformation/joblibs/
 breakdownPredictions/
 results_clustering/
 trained_models/
+hyperparams/
 #Static files
 static/
 
