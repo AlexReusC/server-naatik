@@ -8,15 +8,27 @@ from sklearn.experimental import enable_iterative_imputer
 from category_encoders import OrdinalEncoder
 from joblib import dump
 from imblearn.over_sampling import SMOTE
+import warnings
 
 # Function that transforms the dataset **for the modelling**
-def transform_df_model(df, target_column_name, original_name_dataset):
+def transform_df_model(original_name_dataset, target_column_name):
+    
+    warnings.filterwarnings("ignore")
+
+    df = pd.read_csv(f'./data/'+original_name_dataset+'/'+original_name_dataset+'.csv')
+
+    # Defining the target column
+    y = target_column_name
+
+    target_column_original = df[y]
 
      # Calculating the total cells per client (rows per client times the columns)
     cells_per_client = len(df.columns)
 
     # Calculating the total non null cells per client
     non_null_cells_per_client = df.count(axis=1)
+
+
 
     # Calculating the total non null cells per client in terms of percentages
     percentages_non_null_cells_per_clients = (non_null_cells_per_client * 100) / (cells_per_client)
@@ -48,7 +60,7 @@ def transform_df_model(df, target_column_name, original_name_dataset):
     # Storing the name of columns that are full of unique values (id)
     drop_columns = no_unique_values[no_unique_values == df.shape[0]]
     drop_columns = drop_columns.dropna()
-    drop_column_names.append(drop_columns.index[0])
+    drop_column_names.extend(drop_columns.index.tolist())
     
     # Calculating the percentiles of each column
     data_description = df.describe()
@@ -68,7 +80,9 @@ def transform_df_model(df, target_column_name, original_name_dataset):
     # Removing the target from the columns to drop
     y = target_column_name
     if y in drop_column_names:
-        drop_column_names.remove(y)    
+        drop_column_names.remove(y)
+    
+    drop_column_names = list(set(drop_column_names))
 
     # Dropping the columns to drop
     df = df.drop(drop_column_names, axis=1)
@@ -83,7 +97,7 @@ def transform_df_model(df, target_column_name, original_name_dataset):
         categorical_columns.remove(y)
 
     # Exporting the encoder
-    dump(categorical_columns, f'./fragments/joblibs/{original_name_dataset}/etl/categorical_columns.joblib')
+    dump(categorical_columns, f'./data_transformation/joblibs/{original_name_dataset}/etl/categorical_columns.joblib')
 
     # Creating a label encoder object
     encoder = OrdinalEncoder().fit(df[categorical_columns])
@@ -92,7 +106,7 @@ def transform_df_model(df, target_column_name, original_name_dataset):
     categorical_columns_encoded = encoder.transform(df[categorical_columns])
 
     # Exporting the encoder
-    dump(encoder, f'./fragments/joblibs/{original_name_dataset}/etl/encoder.joblib')
+    dump(encoder, f'./data_transformation/joblibs/{original_name_dataset}/etl/encoder.joblib')
 
     # Subsituting the numerical categorical columns in the dataset
     df[categorical_columns] = categorical_columns_encoded
@@ -101,7 +115,7 @@ def transform_df_model(df, target_column_name, original_name_dataset):
     imp_mean = impute.IterativeImputer()
     
     # Exporting the encoder
-    dump(imp_mean, f'./fragments/joblibs/{original_name_dataset}/etl/imputation.joblib')
+    dump(imp_mean, f'./data_transformation/joblibs/{original_name_dataset}/etl/imputation.joblib')
 
     # Imputing the missing values of the dataset
     imputed_data = imp_mean.fit_transform(df.drop([y], axis=1))
@@ -144,7 +158,7 @@ def transform_df_model(df, target_column_name, original_name_dataset):
     df_mean_std = df_mean_std.drop(['count', 'min', '25%', '50%', '75%', 'max'], axis = 0)
 
     # Exporting the data for the standardization
-    dump(df_mean_std, f'./fragments/joblibs/{original_name_dataset}/etl/mean_std.joblib')
+    dump(df_mean_std, f'./data_transformation/joblibs/{original_name_dataset}/etl/mean_std.joblib')
 
     # Calculating the z-score
     z_score = df.copy()
@@ -171,10 +185,16 @@ def transform_df_model(df, target_column_name, original_name_dataset):
     df_data = df.drop(['index'], axis=1, inplace=True)
 
     # Exporting the column names to drop
-    dump(drop_column_names, f'./fragments/joblibs/{original_name_dataset}/etl/drop_columns_names.joblib')
+    dump(drop_column_names, f'./data_transformation/joblibs/{original_name_dataset}/etl/drop_columns_names.joblib')
 
     # Shuffling the dataset to avoid any pre-order
     df = df.sample(frac = 1).reset_index(drop = True)
+
+    # Changing the target column to numerical
+    le = preprocessing.LabelEncoder()
+    le.fit(df[target_column_name])
+    df[target_column_name] = le.transform(df[target_column_name])
+    dump(le, f'./data_transformation/joblibs/{original_name_dataset}/etl/encoder_target.joblib')
 
     # Test dataset
     no_rows_test = int((df.shape[0]+outliers.shape[0])*0.3)
@@ -188,21 +208,43 @@ def transform_df_model(df, target_column_name, original_name_dataset):
 
     # Using smote algorithm for over-sampling
     sm = SMOTE(random_state = 2)
-    x_train, y_train = sm.fit_resample(train.drop([y], axis=1), train[y])
+    error_smote = False
+    try:
+        x_train, y_train = sm.fit_resample(train.drop([y], axis=1), train[y])
+    except:
+        error_smote = True
+
+    # Calculating the general aspects of the dataset
+    target_column_original = le.transform(target_column_original)
+    number_churn = np.count_nonzero(target_column_original == 1)
+    number_no_churn = np.count_nonzero(target_column_original == 0)
+    percentage_churn = (number_churn * 100) / target_column_original.size
+    percentage_no_churn = (number_no_churn * 100) / target_column_original.size
+
+    # Saving the general aspects in a df
+    d = {'total':target_column_original.size, 'number_churn': number_churn, 'number_no_churn': number_no_churn, 'percentage_churn': round(percentage_churn,2), 'percentage_no_churn': round(percentage_no_churn,2)}
+    #general_aspects_original = pd.DataFrame(data=d)
+    dump(d, f'./data_transformation/joblibs/{original_name_dataset}/etl/general_aspects_original.joblib')
+
 
     # Dividing the target and labels
     y_test = pd.DataFrame(test[y])
     x_test = test.drop([y], axis=1)
 
     # Reestructuring the train dataset
-    y_train = pd.DataFrame(y_train)
+    if not error_smote:
+        y_train = pd.DataFrame(y_train)
 
     # Exporting the test and train of the dataframes
-    x_test.to_csv(f'../data/{original_name_dataset}/test/x_test.csv', index=False)
-    y_test.to_csv(f'../data/{original_name_dataset}/test/y_test.csv', index=False)
+    x_test.to_csv(f'./data/{original_name_dataset}/test/x_test.csv', index=False)
+    y_test.to_csv(f'./data/{original_name_dataset}/test/y_test.csv', index=False)
 
-    x_train.to_csv(f'../data/{original_name_dataset}/train/x_train.csv', index=False)
-    y_train.to_csv(f'../data/{original_name_dataset}/train/y_train.csv', index=False)
 
-    train.to_csv(f'../data/{original_name_dataset}/original_train.csv', index=False)
-    df.to_csv(f'../data/{original_name_dataset}/full_transformed_data.csv', index=False)
+    if not error_smote:
+        x_train.to_csv(f'./data/{original_name_dataset}/train/x_train.csv', index=False)
+        y_train.to_csv(f'./data/{original_name_dataset}/train/y_train.csv', index=False)
+
+    train.to_csv(f'./data/{original_name_dataset}/train/original_train.csv', index=False)
+    df.to_csv(f'./data/{original_name_dataset}/fully_transformed.csv', index=False)
+
+    dump(error_smote, f'./data_transformation/joblibs/{original_name_dataset}/etl/error_smote.joblib')
